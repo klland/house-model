@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="18d95f9ad42ff8fb">
+    <meta name="model-revision" content="5a96fcd9e5b92688">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -143,7 +143,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
     </section>
     <aside class="edit" aria-label="家具設定">
         <h2>家具試擺</h2>
-        <p class="hint">選擇家具後可拖曳、微調或旋轉。按「儲存家具配置」可保留位置。</p>
+        <p class="hint">選擇家具後可拖曳、微調或旋轉。按「儲存家具配置」可保留位置與角度。</p>
         <div class="editmodes"><button type="button" id="look" aria-pressed="true">旋轉觀看</button><button type="button" id="move" aria-pressed="false">移動家具</button></div>
         <section>
             <label for="object">選擇家具</label>
@@ -156,7 +156,8 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
                 <button type="button" class="south" data-nudge="0,.1">南 ↓</button><button type="button" class="east" data-nudge=".1,0">東 →</button>
             </div>
             <div class="actions">
-                <button id="turn" type="button">家具轉 90°</button>
+                <button id="turn-45" type="button" data-turn="45">家具轉 45°</button>
+                <button id="turn" type="button" data-turn="90">家具轉 90°</button>
                 <button id="save-layout" type="button">儲存家具配置</button>
                 <button id="reset" type="button">還原原始配置</button>
                 <p id="layout-status" class="hint" role="status" hidden></p>
@@ -2993,6 +2994,7 @@ const outerLightProfiles={
 let lightMode="day", outerLightMode="day";
 const gl=canvas.getContext("webgl2",{antialias:true,alpha:true,preserveDrawingBuffer:true});
 const buttons=Array.from(document.querySelectorAll("[data-nudge]"));
+const turnButtons=Array.from(document.querySelectorAll("[data-turn]"));
 const walkButtons=Array.from(document.querySelectorAll("[data-walk]"));
 const V={
     add:(a,b)=>a.map((x,i)=>x+b[i]),sub:(a,b)=>a.map((x,i)=>x-b[i]),
@@ -3821,14 +3823,27 @@ function reposition(g,dx,dy,angle=g.angle){
     showLayoutStatus("");
     updateEditing();schedule();
 }
-function overlap(a,b){return Math.min(a[1],b[1])-Math.max(a[0],b[0])>.025&&Math.min(a[3],b[3])-Math.max(a[2],b[2])>.025;}
+function overlap(a,b){
+    const footprints=[a,b].map(g=>{
+        const [x,y,c,s]=pose(g);
+        return {center:[x,y],axes:[[c,s],[-s,c]],halfWidth:(g.b[3]-g.b[0])/2,halfDepth:(g.b[4]-g.b[1])/2};
+    });
+    // Project both footprints onto each furniture edge direction.
+    return footprints.flatMap(f=>f.axes).every(axis=>{
+        const [[loA,hiA],[loB,hiB]]=footprints.map(({center,axes,halfWidth,halfDepth})=>{
+            const middle=V.dot(center,axis);
+            const extent=halfWidth*Math.abs(V.dot(axes[0],axis))+halfDepth*Math.abs(V.dot(axes[1],axis));
+            return [middle-extent,middle+extent];
+        });
+        return Math.min(hiA,hiB)-Math.max(loA,loB)>.025;
+    });
+}
 function updateEditing(){
     objectMenu.value=selected?.key||"";
     const location=$("location");
-    const b=selected?rectangle(selected):null;
     const collision=selected?[...editable,...placementObstacles].find(g=>g!==selected&&
         upstairsFurnitureKeys.has(g.key)===upstairsFurnitureKeys.has(selected.key)&&
-        !hidesModelVariant(g.key)&&overlap(b,rectangle(g))):null;
+        !hidesModelVariant(g.key)&&overlap(selected,g)):null;
     for(const option of objectMenu.options){
         if(option.value)option.disabled=hidesModelVariant(option.value);
     }
@@ -3836,10 +3851,12 @@ function updateEditing(){
     if(selected){
         const cm=selected.shift.map(v=>Math.round(v*100));
         const changed=cm.map((v,i)=>v?(v>0?(i?"南":"東"):(i?"北":"西"))+"移 "+Math.abs(v)+" cm":null).filter(Boolean);
-        location.textContent=(changed.length?changed.join("、"):"位於原始位置")+(collision?"。與"+(collision.info?.[0]||names[collision.key])+"重疊。":"。");
+        const degrees=(Math.round(selected.angle*180/Math.PI)+360)%360;
+        location.textContent=(changed.length?changed.join("、"):"位於原始位置")+"，旋轉 "+degrees+"°"+
+            (collision?"。與"+(collision.info?.[0]||names[collision.key])+"重疊。":"。");
     }else location.textContent="點選平面中的家具，或從選單選取。";
     buttons.forEach(b=>b.disabled=!selected);
-    $("turn").disabled=!selected;
+    turnButtons.forEach(b=>b.disabled=!selected);
     $("reset").disabled=!editable.some(g=>g.angle||g.shift.some(Boolean));
 }
 function updateMode(){
@@ -4239,7 +4256,12 @@ $("west-window-toggle").onclick=()=>{
     schedule();
 };
 buttons.forEach(b=>b.onclick=()=>{if(selected){const [x,y]=b.dataset.nudge.split(",").map(Number);reposition(selected,selected.shift[0]+x,selected.shift[1]+y);}});
-$("turn").onclick=()=>{if(selected)reposition(selected,...selected.shift,(selected.angle+Math.PI/2)%(Math.PI*2));};
+turnButtons.forEach(button=>{
+    const angle=Number(button.dataset.turn)*Math.PI/180;
+    button.onclick=()=>{
+        if(selected)reposition(selected,...selected.shift,(selected.angle+angle)%(2*Math.PI));
+    };
+});
 $("save-layout").onclick=saveFurnitureLayout;
 $("reset").onclick=()=>{
     editable.forEach(g=>{g.shift=[0,0];g.angle=0;});
@@ -4414,6 +4436,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=18d95f9ad42ff8fb" defer></script>
+    <script src="./check-version.js?v=5a96fcd9e5b92688" defer></script>
 </body>
 </html>

@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="fdc431b9f27a5c41">
+    <meta name="model-revision" content="0fb77c9d363976ce">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -119,7 +119,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
                 <span class="core"></span><span data-dir="n">北</span><span data-dir="e">東</span><span data-dir="s">南</span><span data-dir="w">西</span>
             </div>
             <div class="label" id="outer-label">外廳 <span>柱間 2.50 m</span></div>
-            <div class="label" id="inner-label">客廳 <span>4.8 m</span></div>
+            <div class="label" id="inner-label">客廳 <span></span></div>
             <div class="zoom"><button type="button" id="smaller" aria-label="縮小">−</button><button type="button" id="larger" aria-label="放大">＋</button></div>
             <div id="error" role="alert" hidden>目前的瀏覽器無法顯示 3D。仍可按「下載目前配置為 GLB」。</div>
         </div>
@@ -2811,7 +2811,102 @@ function buildSecondFloor(data){
 const upstairs=buildSecondFloor(data);
 const third=upstairs.third;
 const rearBalcony=upstairs.rearBalcony;
+const {groundX,frontTrim}=shortenWestEnd(data,upstairs);
+
+function shortenWestEnd(model,upper){
+    const frontTrim=1;
+    const dimensions=model.designDimensions;
+    const entry=dimensions.measuredEntry;
+    const livingEast=8;
+    const livingWest=entry.livingWallEnd;
+    const porchWest=upper.westBedroom.porchWest;
+    const porchEast=upper.westBedroom.windowBounds[0][0];
+    const fraction=(x,a,b)=>Math.max(0,Math.min(1,(b-x)/(b-a)));
+    // Take half the reduction on either side of the existing living-room window.
+    const groundX=x=>x+frontTrim*.5*(fraction(x,livingWest,4.72)+fraction(x,6.14,7.95));
+    const upperX=x=>x+frontTrim*fraction(x,porchWest,porchEast);
+    const translateFront=x=>x+frontTrim;
+    function remapLayer(key,map,groundOnly=false){
+        for(const box of model.layers[key]??[]){
+            if(groundOnly&&box[2]>=upper.floor-.04)continue;
+            box[0]=map(box[0]);
+            box[3]=map(box[3]);
+        }
+        for(const prism of model.polygons[key]??[]){
+            const [points,lo,hi,,axis]=prism;
+            const lowZ=axis==="z"?lo:Math.min(...points.map(p=>p[axis==="surface"?2:1]));
+            if(groundOnly&&lowZ>=upper.floor-.04)continue;
+            if(axis==="x"){
+                prism[1]=map(lo);
+                prism[2]=map(hi);
+            }else{
+                for(const point of points)point[0]=map(point[0]);
+            }
+        }
+    }
+    for(const key of ["floor","roof","north","south","beforeFloor","beforeNorth","beforeSouth",
+        "sideSkin","firstFacadeWindows","beforeFacadeWindows","groundTrim","groundTrimActual",
+        "beforeOuterTiles","beforeOuterFacadeTiles","beforeSkirting","afterSkirting","westRollers",
+        "coveredWalk","southWalkActual","newCanopy","entryTileBands","entryBeams","livingEntryBeam",
+        "livingMainLight","livingAccentLights"]){
+        remapLayer(key,groundX);
+    }
+    remapLayer("sideWindows",groundX,true);
+    for(const key of ["west","westShutterLeaf","outerWallFinish","entry","entryPosts","divider",
+        "beforeDivider","livingEntryPosts","livingEntryTiles","livingEntryTilesActual","livingEntrySeat",
+        "northCab","southCab","lamps"]){
+        remapLayer(key,translateFront);
+    }
+    for(const [key,[,room]] of Object.entries(model.objects)){
+        if(room==="外廳")remapLayer(key,translateFront);
+        if(room==="客廳"){
+            const boxes=model.layers[key];
+            const center=(Math.min(...boxes.map(b=>b[0]))+Math.max(...boxes.map(b=>b[3])))/2;
+            const shift=groundX(center)-center;
+            remapLayer(key,x=>x+shift);
+        }
+    }
+    remapLayer("ac",x=>x+groundX(6.155)-6.155);
+    for(const key of ["upperFront","upperSide","upperTile","upperTileActual","balcony","hoop",
+        "existingEaves","frontSoffitTrim","frontSoffitTrimActual","upperWestBalconyFloor",
+        "upperWestBalcony","upperWestBalconyCeiling","thirdTerraceFloor","thirdTerraceWalls",
+        "thirdTerraceNorthWall"]){
+        remapLayer(key,upperX);
+    }
+
+    dimensions.outerHallWall.westExteriorX+=frontTrim;
+    dimensions.outerHallWall.westInteriorX+=frontTrim;
+    dimensions.westEave.pierWestX+=frontTrim;
+    dimensions.sideWindowCenters.living=groundX(dimensions.sideWindowCenters.living);
+    entry.livingWallX+=frontTrim;
+    entry.livingWallEnd+=frontTrim;
+    dimensions.livingRoomDepth=+(livingEast-entry.livingWallEnd).toFixed(2);
+    const kitchen=model.rearLayout.zones.find(zone=>zone.name==="廚房");
+    dimensions.rear.livingToKitchenLength=+(kitchen.bounds[2]-entry.livingWallEnd).toFixed(2);
+    for(const point of [model.outerLighting.table,...model.outerLighting.entry,...model.outerLighting.storage]){
+        point[0]+=frontTrim;
+    }
+    for(const point of [model.livingLighting.main,...model.livingLighting.accents])point[0]=groundX(point[0]);
+    for(const camera of model.cameras){
+        const map=camera.third||camera.upper?upperX:groundX;
+        if(!camera.exterior)camera.eye[0]=map(camera.eye[0]);
+        camera.target[0]=map(camera.target[0]);
+        if(camera.walkStart)camera.walkStart[0]=map(camera.walkStart[0]);
+    }
+    upper.westBedroom.porchWest+=frontTrim;
+    upper.planBounds[0]+=frontTrim;
+    const porch=upper.walkZones.find(zone=>zone.name===upper.westBedroom.porchLabel);
+    porch.bounds[0]+=frontTrim;
+    upper.labels.find(label=>label.label===porch.name).position[0]=upperX(-.07);
+    const terrace=upper.third.zones.find(zone=>zone.name==="三樓大陽台");
+    terrace.bounds[0]+=frontTrim;
+    upper.third.planBounds[0]+=frontTrim;
+    upper.third.labels.find(label=>label.label===terrace.name).position[0]+=frontTrim/2;
+    return {groundX,frontTrim};
+}
+
 const $=(id)=>document.getElementById(id);
+$("inner-label").querySelector("span").textContent="4.80 × "+data.designDimensions.livingRoomDepth.toFixed(2)+" m";
 const canvas=$("scene"), stage=$("stage"), section=$("section"), objectMenu=$("object");
 const lightMenu=$("living-light-mode"), outerLightMenu=$("outer-light-mode");
 const exteriorMenu=$("exterior-version");
@@ -2845,7 +2940,7 @@ const transparent=(kind)=>kind===5||kind===10||kind===49;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const round=(n)=>Math.round(n*1000)/1000;
 const roomBounds={
-    外廳:[.08,data.designDimensions.measuredEntry.livingWallX-.03,.06,4.74],
+    外廳:[.08+frontTrim,data.designDimensions.measuredEntry.livingWallX-.03,.06,4.74],
     客廳:[data.designDimensions.measuredEntry.livingWallEnd+.08,7.94,.06,4.74],廚房:[14.03,17.97,.033,4.77],
     二樓書房:upstairs.studyBounds
 };
@@ -2945,7 +3040,7 @@ for (const label of Object.keys(roomBounds)){
 let view="exterior", mode="look", preset=0, yaw=2.36, pitch=1.00, distance=20.2, planZoom=1, planX=8.80, planY=2.39;
 let extYaw=1.89,extPitch=.29,extDistance=24.4,orbitFloor=-1;
 let selected=null, frame=null, viewport=null, pointer=null, pending=false, lookYaw=0, lookPitch=0, lens=1;
-const walkOrigin=[.58,3.76], upstairsOrigin=[12.53,4.28], outsideOrigin=[-4.65,5.37];
+const walkOrigin=[.58+frontTrim,3.76], upstairsOrigin=[12.53,4.28], outsideOrigin=[-4.65,5.37];
 const walkEyeHeight=1.60, walkRadius=.145;
 let walkStart="first", westWindowOpen=false, frontShutterOpen=false;
 const walkDirections={w:[1,0],arrowup:[1,0],s:[-1,0],arrowdown:[-1,0],a:[0,-1],arrowleft:[0,-1],d:[0,1],arrowright:[0,1]};
@@ -3224,7 +3319,7 @@ void main(){
     }
     shaded=color*(l*roomLight.w+warmLight*vec3(1.,.92,.80));
   }
-  if(outerLight.w<.999&&p.x>=-.431&&p.x<=3.143&&p.y>=-.032&&p.y<=4.836&&p.z>=-.001&&p.z<=3.6001){
+  if(outerLight.w<.999&&p.x>=${(-.431+frontTrim).toFixed(3)}&&p.x<=${data.designDimensions.measuredEntry.livingWallEnd.toFixed(3)}&&p.y>=-.032&&p.y<=4.836&&p.z>=-.001&&p.z<=3.6001){
     float tableLight=outerLight.x*1.44*outerDownlight(tableLamp);
     float sideLight=0.;
     for(int i=0;i<${entry.length};i++)sideLight+=outerLight.y*.57*outerDownlight(outerEntryLamps[i]);
@@ -3525,8 +3620,8 @@ function screenpoint(p){
     return [frame.w/2+V.dot(d,frame.right)*scalar,frame.h/2-V.dot(d,frame.up)*scalar];
 }
 const roomLabels=[
-    {el:$("outer-label"),position:[1.5,3.17,.12]},
-    {el:$("inner-label"),position:[5.5,3.16,.12]},
+    {el:$("outer-label"),position:[1.5+frontTrim,3.17,.12]},
+    {el:$("inner-label"),position:[groundX(5.5),3.16,.12]},
     ...data.rearLayout.labels.map(({label,detail,position})=>{
         const el=document.createElement("div"), detailText=document.createElement("span");
         el.className="label rear-label";
@@ -3546,7 +3641,7 @@ const roomLabels=[
     }))
 ];
 const wholeFloorLabels=[
-    ["一樓",[1.40,2.1,.12]],["二樓",[8.25,2.1,upstairs.floor+.11]],["三樓",[7.40,2.1,third.floor+.11]]
+    ["一樓",[1.40+frontTrim,2.1,.12]],["二樓",[8.25,2.1,upstairs.floor+.11]],["三樓",[7.40,2.1,third.floor+.11]]
 ].map(([label,position])=>{
     const el=document.createElement("div");
     el.className="label";
@@ -3803,7 +3898,7 @@ function walkRoom(){
     if(walkHeight>upstairs.floor+.001)return "二樓至三樓樓梯";
     if(walkHeight>=upstairs.floor-.001)return upperZone?.name||"二樓";
     if(walkHeight>.03)return "一樓至二樓樓梯";
-    return rearZoneAt(...walkPosition)?.name||(walkPosition[0]>3.31?"客廳":"外廳");
+    return rearZoneAt(...walkPosition)?.name||(walkPosition[0]>data.designDimensions.measuredEntry.livingWallEnd?"客廳":"外廳");
 }
 function updateViewLabel(){
     const version=exteriorMenu.value==="actual"?"改造前":"改造後";
@@ -3851,7 +3946,7 @@ function resetWalk(){
         height=third.floor;
         yaw=Math.PI;
     }else if(!canWalkTo(...start)){
-        search: for(let x=.30;x<3;x+=.20){
+        search: for(let x=.30+frontTrim;x<3+frontTrim;x+=.20){
             for(let y=3.3;y<4.56;y+=.21){
                 if(canWalkTo(x,y)){start=[x,y];break search;}
             }
@@ -4255,6 +4350,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=fdc431b9f27a5c41" defer></script>
+    <script src="./check-version.js?v=0fb77c9d363976ce" defer></script>
 </body>
 </html>

@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="0fb77c9d363976ce">
+    <meta name="model-revision" content="388bf29eda13d382">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -2819,29 +2819,28 @@ function shortenWestEnd(model,upper){
     const entry=dimensions.measuredEntry;
     const livingEast=8;
     const livingWest=entry.livingWallEnd;
+    const windowApronWest=dimensions.sideWindowCenters.living-.71;
     const porchWest=upper.westBedroom.porchWest;
     const porchEast=upper.westBedroom.windowBounds[0][0];
     const fraction=(x,a,b)=>Math.max(0,Math.min(1,(b-x)/(b-a)));
-    // Take half the reduction on either side of the existing living-room window.
-    const groundX=x=>x+frontTrim*.5*(fraction(x,livingWest,4.72)+fraction(x,6.14,7.95));
+    // Trim the wall in front of the window and its hood to keep the two storeys aligned.
+    const groundX=x=>x+frontTrim*fraction(x,livingWest,windowApronWest);
     const upperX=x=>x+frontTrim*fraction(x,porchWest,porchEast);
     const translateFront=x=>x+frontTrim;
     function remapLayer(key,map,groundOnly=false){
-        for(const box of model.layers[key]??[]){
-            if(groundOnly&&box[2]>=upper.floor-.04)continue;
-            box[0]=map(box[0]);
-            box[3]=map(box[3]);
+        // The two exterior variants can share the same source faces.
+        if(model.layers[key]){
+            model.layers[key]=model.layers[key].map(b=>
+                groundOnly&&b[2]>=upper.floor-.04?b:[map(b[0]),b[1],b[2],map(b[3]),...b.slice(4)]);
         }
-        for(const prism of model.polygons[key]??[]){
-            const [points,lo,hi,,axis]=prism;
-            const lowZ=axis==="z"?lo:Math.min(...points.map(p=>p[axis==="surface"?2:1]));
-            if(groundOnly&&lowZ>=upper.floor-.04)continue;
-            if(axis==="x"){
-                prism[1]=map(lo);
-                prism[2]=map(hi);
-            }else{
-                for(const point of points)point[0]=map(point[0]);
-            }
+        if(model.polygons[key]){
+            model.polygons[key]=model.polygons[key].map(prism=>{
+                const [points,lo,hi,,axis]=prism;
+                const lowZ=axis==="z"?lo:Math.min(...points.map(p=>p[axis==="surface"?2:1]));
+                if(groundOnly&&lowZ>=upper.floor-.04)return prism;
+                return axis==="x"?[points,map(lo),map(hi),...prism.slice(3)]:
+                    [points.map(([x,...rest])=>[map(x),...rest]),...prism.slice(1)];
+            });
         }
     }
     for(const key of ["floor","roof","north","south","beforeFloor","beforeNorth","beforeSouth",
@@ -2866,7 +2865,6 @@ function shortenWestEnd(model,upper){
             remapLayer(key,x=>x+shift);
         }
     }
-    remapLayer("ac",x=>x+groundX(6.155)-6.155);
     for(const key of ["upperFront","upperSide","upperTile","upperTileActual","balcony","hoop",
         "existingEaves","frontSoffitTrim","frontSoffitTrimActual","upperWestBalconyFloor",
         "upperWestBalcony","upperWestBalconyCeiling","thirdTerraceFloor","thirdTerraceWalls",
@@ -2877,7 +2875,6 @@ function shortenWestEnd(model,upper){
     dimensions.outerHallWall.westExteriorX+=frontTrim;
     dimensions.outerHallWall.westInteriorX+=frontTrim;
     dimensions.westEave.pierWestX+=frontTrim;
-    dimensions.sideWindowCenters.living=groundX(dimensions.sideWindowCenters.living);
     entry.livingWallX+=frontTrim;
     entry.livingWallEnd+=frontTrim;
     dimensions.livingRoomDepth=+(livingEast-entry.livingWallEnd).toFixed(2);
@@ -4350,6 +4347,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=0fb77c9d363976ce" defer></script>
+    <script src="./check-version.js?v=388bf29eda13d382" defer></script>
 </body>
 </html>

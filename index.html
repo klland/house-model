@@ -152,7 +152,7 @@ canvas.moving{cursor:move}
     }
 }
 </style>
-    <meta name="model-revision" content="8c6ad37e5a5744a3">
+    <meta name="model-revision" content="59645709a940ddf5">
 </head>
 <body>
 <header class="shell-header">
@@ -2935,12 +2935,17 @@ function buildSecondFloor(data){
             const y=winLeft+(winRight-winLeft)*fraction;
             oldWindow(y-.015,y+.015,2.224,winHead-.043,gray);
         }
+        let doorJambEnd=innerDoor[1];
         for(const b of keepOriginalDoor){
             const next=moveDivider(b);
             for(const i of [1,4])next[i]=innerDoor[0]+(next[i]-3.46)*(1.25/1.21);
             for(const i of [2,5])next[i]=next[i]*winHead/3.19;
+            if(next[2]===0&&next[3]<=dividerEnd)doorJambEnd=Math.max(doorJambEnd,next[4]);
             data.layers[beforeDivider].push(next);
         }
+        // Connect the retained joinery to both side-wall returns.
+        box(beforeDivider,sideEnd,0,0,dividerEnd,winLeft,beamSill,entryPaint);
+        box(beforeDivider,sideEnd,doorJambEnd,0,dividerEnd,4.80,beamSill,entryPaint);
         data.layers.livingEntryBeam=[];
         box("livingEntryBeam",sideEnd,-.03,beamSill,dividerEnd+.09,4.835,entryCeiling,entryPaint);
         // End the cladding at the outer-hall face without wrapping the beam into the living room.
@@ -4731,6 +4736,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=8c6ad37e5a5744a3" defer></script>
+    <script src="./check-version.js?v=59645709a940ddf5" defer></script>
 </body>
 </html>

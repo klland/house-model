@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="07ca89af67cf4e38">
+    <meta name="model-revision" content="cd23fb0701cbdef4">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -2758,7 +2758,8 @@ function buildSecondFloor(data){
         const northCabinetEnd=fitHall(Math.max(...data.layers.northCab.map(b=>b[3])));
         const northCabinetScale=(cabinetFront-.01-westInside)/(northCabinetEnd-westInside);
         const shoeCabinetWest=-.26, shoeCabinetEast=1.925, shoeBenchWest=2.235;
-        const shoeCabinetScale=(shoeBenchWest-.02-shoeCabinetWest)/(shoeCabinetEast-shoeCabinetWest);
+        const extendedShoeCabinetEast=shoeBenchWest-.02;
+        const shoeCabinetScale=(extendedShoeCabinetEast-shoeCabinetWest)/(shoeCabinetEast-shoeCabinetWest);
         for(const key of ["northCab","southCab"]){
             const fitCabinet=key==="northCab"
                 ?x=>westInside+(fitHall(x)-westInside)*northCabinetScale
@@ -2770,6 +2771,34 @@ function buildSecondFloor(data){
                 return [points.map(([x,...rest])=>[fitCabinet(x),...rest]),a,b,color,axis,pattern];
             });
         }
+        // Move the rounded tile border to the cabinet end and cut the hexagons at the new edge.
+        const tileEdgeShift=fitHall(extendedShoeCabinetEast)-shoeCabinetEast;
+        const movesWithBorder=([x])=>x>shoeCabinetWest;
+        const moveBorder=([x,y])=>[x>shoeCabinetWest?x+tileEdgeShift:x,y];
+        const grout=data.polygons.entry.find(([points,,top])=>top===.0014&&points.some(movesWithBorder));
+        const tileOutline=grout[0].map(moveBorder);
+        function cutHexagon(points){
+            return tileOutline.reduce((tile,[ax,ay],i)=>{
+                const [bx,by]=tileOutline[(i+1)%tileOutline.length];
+                const distance=([x,y])=>(bx-ax)*(y-ay)-(by-ay)*(x-ax);
+                return tile.flatMap((end,index)=>{
+                    const start=tile[(index+tile.length-1)%tile.length];
+                    const from=distance(start), to=distance(end);
+                    const kept=[];
+                    if(from*to<0){
+                        const t=from/(from-to);
+                        kept.push(start.map((v,j)=>v+(end[j]-v)*t));
+                    }
+                    if(to>=0)kept.push(end);
+                    return kept;
+                });
+            },points);
+        }
+        data.polygons.entry=data.polygons.entry.flatMap(prism=>{
+            if(!prism[0].some(movesWithBorder))return [prism];
+            const points=prism[1]>=grout[2]?cutHexagon(prism[0]):prism[0].map(moveBorder);
+            return points.length>=3?[[points,...prism.slice(1)]]:[];
+        });
         const shiftHall=(key,dx,dz=0)=>{
             for(const b of data.layers[key]){
                 for(const i of [0,3])b[i]+=dx;
@@ -4375,6 +4404,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=07ca89af67cf4e38" defer></script>
+    <script src="./check-version.js?v=cd23fb0701cbdef4" defer></script>
 </body>
 </html>

@@ -166,7 +166,7 @@ canvas.moving{cursor:move}
 .catalog-table :is(th,td):not(:first-child){width:16%;text-align:right;white-space:nowrap}
 .catalog-note{display:block;color:var(--muted);font-weight:400;font-size:11px;line-height:1.45}
 </style>
-    <meta name="model-revision" content="72b3169e9e138519">
+    <meta name="model-revision" content="d59f14f9b83fcb99">
 </head>
 <body>
 <header class="shell-header">
@@ -2873,7 +2873,7 @@ function buildSecondFloor(data){
     function applyMeasuredEntry(){
         const entryCeiling=3.50, beamSill=3.17;
         const westOutside=measuredWestOutside, westInside=-.41, wallPlane=(westOutside+westInside)/2;
-        const sideWindowHeight=.50, westGlazingShortSide=.45;
+        const sideWindowHeight=.60, westGlazingShortSide=.45;
         const northJamb=.32, southJamb=4.52, doorWidth=1.15;
         const doorLeft=southJamb-doorWidth, sideLightLeft=doorLeft-westGlazingShortSide;
         const doorHead=2.20, sideStart=measuredSideStart, sideEnd=measuredSideEnd;
@@ -4998,6 +4998,6 @@ applyFurnitureLayout(publishedLayout);
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=72b3169e9e138519" defer></script>
+    <script src="./check-version.js?v=d59f14f9b83fcb99" defer></script>
 </body>
 </html>

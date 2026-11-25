@@ -5,59 +5,121 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>倉庫現況 3D 模型</title>
 <style>
-:root{color-scheme:light;--ink:#27332e;--muted:#5b675f;--page:#f7f6f1;--line:#dce0d8;--green:#285a49;--rust:#a45449}
+:root{
+    color-scheme:light;
+    --page:#f5f3ee;--surface:#fdfcf9;--ink:#222d27;--muted:#59645d;
+    --line:#deded4;--green:#294b3c;--tint:#e8eee7;--warning:#924a31;
+    --gutter:clamp(12px,2.65vw,42px);
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--page);color:var(--ink);font:15px/1.5 "PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
-main{width:min(1440px,100% - 48px);margin:auto;padding:30px 0 24px}
-header{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:22px}
-h1{font-size:clamp(26px,4vw,40px);line-height:1.18;margin:0 0 7px;letter-spacing:.025em} p{margin:0}
-.meta,.hint,.note{color:var(--muted);font-size:13px}.meta{font-size:14px}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 258px;gap:16px}
-.viewer{min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:#fff;box-shadow:0 4px 20px #213a2910}
-.controls{display:flex;gap:6px;flex-wrap:wrap;padding:10px;background:#fff;border-bottom:1px solid var(--line)}
-button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line);border-radius:8px;background:white;min-height:40px;padding:6px 12px;touch-action:manipulation}
-button:hover{background:#eef4ed}button[aria-pressed="true"]{background:var(--green);color:white;border-color:var(--green)}
-button:focus-visible,input:focus-visible,canvas:focus-visible{outline:3px solid #659d89;outline-offset:2px}
-#reset{margin-left:auto}
-.stage{position:relative;height:clamp(340px,59vh,720px);background:linear-gradient(#dce9e6,#eff0e9);overflow:hidden}
-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}
-.walk #scene{cursor:move}.stage-label{position:absolute;top:13px;left:13px;border:1px solid #ffffffa0;background:#fbfdf4e8;padding:5px 9px;border-radius:6px;font-size:12px;pointer-events:none}
-#warning{position:absolute;top:40%;left:10%;right:10%;text-align:center}
-.zoom,.pad{position:absolute;bottom:14px;display:flex;gap:5px}.zoom{right:14px}
-.zoom button,.pad button{background:#fffef2ed;font-size:19px;padding:0;width:42px;height:42px;text-align:center;touch-action:none}.pad{left:14px}
-aside{border:1px solid var(--line);border-radius:15px;background:#fff;padding:15px 16px;align-self:start}
-h2{font-size:17px;margin:0 0 12px}
-.metrics{margin:0 0 11px}.metrics div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e9ece6}
-dt{font-weight:530} dd{margin:0;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.area{color:var(--muted);font-size:13px;margin-bottom:7px}
-.measure-note{margin-bottom:13px}
-details{border-top:1px solid var(--line);padding:12px 0}summary{font-weight:600;cursor:pointer}
-form{display:grid;gap:7px;margin-top:10px}label{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:13px}
-input{max-width:78px;width:100%;padding:4px 6px;color:var(--ink);border:1px solid #c8d1c8;border-radius:5px;font:inherit}
-#report{color:var(--rust);font-size:12px}.save{margin-top:2px;width:100%}
-.hint{min-height:43px;padding:11px 13px;background:#fff;border-top:1px solid var(--line)}
 [hidden]{display:none!important}
-@media(max-width:800px){main{width:calc(100% - 24px);padding-top:19px}header{margin-bottom:13px}.layout{grid-template-columns:1fr;gap:12px}.stage{height:clamp(300px,54vh,600px)}.metrics{display:grid;grid-template-columns:1fr 1fr;column-gap:17px}}
-@media(max-width:410px){button{padding-inline:8px}.controls{gap:4px;padding:7px}.metrics{grid-template-columns:1fr}.stage{min-height:285px}}
-html[data-embedded] main{padding-top:18px}
-html[data-embedded] .stage{height:clamp(325px,42vw,585px)}
+body{margin:0;background:var(--page);color:var(--ink);font-size:14px}
+h1,h2,p{margin:0}
+button,select,input{font:inherit;color:inherit}
+button,select{
+    min-height:38px;border:1px solid var(--line);border-radius:9px;
+    background:var(--surface);padding:7px 11px
+}
+button,select,summary{cursor:pointer}
+button:hover:not(:disabled),summary:hover{background:var(--tint)}
+button:disabled,select:disabled{opacity:.48;cursor:default}
+:is(button,select,input,summary,canvas):focus-visible{outline:2px solid #638671;outline-offset:2px}
+button:is([aria-pressed="true"],[aria-expanded="true"]){
+    border-color:var(--green);background:var(--green);color:white
+}
+.viewer{position:relative;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:17px;background:var(--surface);box-shadow:0 10px 28px #3245360a}
+.bar{display:flex;align-items:center;gap:12px;min-height:57px;padding:9px 13px;border-bottom:1px solid var(--line)}
+.field{display:flex;align-items:center;gap:8px;min-width:0}
+.field span{color:var(--muted);white-space:nowrap;font-size:13px}
+.field select{width:100%;min-width:0;padding-right:8px}
+.view-field{flex:0 1 260px}
+.view-field select{font-weight:600}
+.version-field{flex:0 1 133px}
+.toolbar-actions{display:flex;gap:6px;margin-left:auto}
+.toolbar-actions button{white-space:nowrap}
+.stage{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 48% 38%,#f4f4ee 0%,#dee5db 100%)}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+canvas.grabbing,canvas:active{cursor:grabbing}
+canvas.moving{cursor:move}
+.coords{
+    position:absolute;top:13px;left:13px;max-width:calc(100% - 26px);padding:5px 9px;
+    border:1px solid #ffffff90;border-radius:8px;background:#fcfcf6ed;pointer-events:none;
+    font-size:12px;line-height:1.45;color:#35493d
+}
+.zoom{position:absolute;right:13px;bottom:13px;display:flex;gap:4px}
+.zoom button{min-width:42px;padding:0;font-size:19px;background:#fcfcf6ed}
+.caption{display:flex;align-items:center;min-height:39px;padding:8px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;line-height:1.5}
+.drawer{
+    position:absolute;z-index:5;top:12px;right:12px;width:min(326px,100% - 24px);max-height:calc(100% - 24px);
+    padding:0 14px 6px;overflow:auto;overscroll-behavior:contain;
+    border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:0 10px 34px #202b2440
+}
+.drawer-header{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:11px 0;background:var(--surface)}
+.drawer-header h2{font-size:15px}
+.drawer-header button{min-width:32px;min-height:32px;padding:0;font-size:20px;line-height:1}
+.drawer details{border-top:1px solid var(--line)}
+.drawer summary{padding:10px 5px;font-weight:600;border-radius:5px}
+.tool-body{display:grid;gap:8px;padding:0 4px 12px}
+.tool-body select{width:100%;max-width:100%;min-width:0}
+.tool-body label{font-size:13px}
+.tool-body button{font-size:13px}
+.tool-body p,.drawer .note{color:var(--muted);font-size:12px;line-height:1.55}
+.tool-actions{display:flex;flex-wrap:wrap;gap:6px}
+.tool-actions button{flex:1 0 auto}
+@media(max-width:580px){
+    .viewer{border-radius:13px}
+    .bar{gap:6px;min-height:52px;padding:7px}
+    .bar .field span{display:none}
+    .view-field{flex:1 1 auto;min-width:84px}
+    .version-field{flex:0 0 77px}
+    .bar :is(button,select){padding-inline:7px;font-size:12px}
+    .toolbar-actions{gap:4px}
+    .caption{padding-inline:10px}
+}
+
+main{max-width:1740px;margin:auto;padding:0 var(--gutter) 15px}
+header{padding:18px 0 12px}
+h1{font-size:clamp(20px,2.4vw,29px);letter-spacing:-.025em}
+html[data-embedded] header{display:none}
+.stage{height:clamp(335px,calc(var(--host-height,100dvh) - 178px),970px)}
+canvas{position:absolute;inset:0}
+.walk #scene{cursor:move}
+#warning{position:absolute;top:35%;left:8%;right:8%;text-align:center;color:var(--warning)}
+.pad{display:none}
+.metrics{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:0;font-size:13px}
+.metrics dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+form{display:grid;gap:8px}
+form label{display:flex;align-items:center;justify-content:space-between;gap:7px}
+form input{width:82px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+#report{color:var(--warning)}
+@media(any-pointer:coarse){
+    .pad:not([hidden]){position:absolute;bottom:13px;left:13px;display:grid;grid-template-columns:repeat(3,44px);gap:4px}
+    .pad button{width:44px;height:44px;padding:0;font-size:18px;touch-action:none;user-select:none}
+    .pad [data-move="w"]{grid-area:1 / 2}
+    .pad [data-move="a"]{grid-area:2 / 1}
+    .pad [data-move="s"]{grid-area:2 / 2}
+    .pad [data-move="d"]{grid-area:2 / 3}
+}
 </style>
 </head>
 <body>
 <main>
-  <header><div><h1>倉庫現況 3D 模型</h1><p class="meta">依現場照片重建的比例草模</p></div></header>
+  <header><h1>倉庫 3D 模型</h1></header>
   <div class="layout">
     <section class="viewer" aria-label="倉庫模型檢視器">
-      <nav class="controls" aria-label="模型視角">
-        <button data-view="orbit" aria-pressed="true">外觀旋轉</button>
-        <button data-view="front" aria-pressed="false">正面</button>
-        <button data-view="cut" aria-pressed="false">俯看室內</button>
-        <button data-view="walk" aria-pressed="false">室內走動</button>
-        <button id="reset">重設視角</button>
-      </nav>
+      <div class="bar">
+        <label class="field view-field"><span>視角</span>
+          <select id="model-view" aria-label="倉庫視角">
+            <option value="orbit">外觀旋轉</option><option value="front">正面</option>
+            <option value="cut">俯看室內</option><option value="walk">室內走動</option>
+          </select>
+        </label>
+        <div class="toolbar-actions"><button type="button" id="tools-toggle" aria-expanded="false" aria-controls="tools">工具</button></div>
+      </div>
       <div class="stage">
         <canvas id="scene" tabindex="0" aria-label="互動倉庫 3D 模型"></canvas>
-        <span class="stage-label" id="viewName">外觀 · 正面左側</span>
+        <span class="coords" id="viewName">外觀 · 正面左側</span>
         <p id="warning" hidden>瀏覽器無法繪製 3D 模型，請以支援 WebGL 2 的瀏覽器開啟。</p>
         <div class="zoom" id="zoom"><button type="button" data-zoom="in" aria-label="放大">＋</button><button type="button" data-zoom="out" aria-label="縮小">−</button></div>
         <div class="pad" id="pad" hidden aria-label="室內方向控制">
@@ -66,34 +128,38 @@ html[data-embedded] .stage{height:clamp(325px,42vw,585px)}
           <button type="button" data-move="s" aria-label="向後走">↓</button>
           <button type="button" data-move="d" aria-label="向右平移">→</button>
         </div>
-      </div>
-      <p class="hint" id="hint">拖曳旋轉 · 滾輪或右下角按鈕縮放</p>
-    </section>
-    <aside aria-label="模型尺寸">
-      <h2>照片估算尺寸</h2>
-      <dl class="metrics">
-        <div><dt>正面寬</dt><dd data-value="width"></dd></div>
-        <div><dt>前後深</dt><dd data-value="depth"></dd></div>
-        <div><dt>地面至前簷</dt><dd data-value="eave"></dd></div>
-        <div><dt>地面至屋脊</dt><dd data-value="ridge"></dd></div>
-        <div><dt>前簷外伸</dt><dd data-value="awning"></dd></div>
-        <div><dt>捲門淨寬 × 高</dt><dd data-value="roller"></dd></div>
-      </dl>
-      <p class="area" id="area"></p>
-      <p class="note measure-note">進深、前簷外伸及後牆窗位待核對。</p>
-      <details>
-        <summary>輸入實測尺寸</summary>
-        <form id="measure">
+        <aside class="drawer" id="tools" aria-labelledby="tools-heading" hidden>
+          <div class="drawer-header"><h2 id="tools-heading">工具</h2><button type="button" id="tools-close" aria-label="關閉工具">×</button></div>
+          <details name="warehouse-tools">
+            <summary>模型尺寸</summary>
+            <div class="tool-body">
+              <dl class="metrics"><dt>正面寬</dt><dd data-value="width"></dd><dt>前後深</dt><dd data-value="depth"></dd><dt>地面至前簷</dt><dd data-value="eave"></dd><dt>地面至屋脊</dt><dd data-value="ridge"></dd><dt>前簷外伸</dt><dd data-value="awning"></dd><dt>捲門淨寬 × 高</dt><dd data-value="roller"></dd></dl>
+              <p class="area" id="area"></p>
+              <p class="note">尺寸依現場照片估算。進深、前簷外伸及後牆窗位待核對。</p>
+            </div>
+          </details>
+          <details name="warehouse-tools">
+            <summary>輸入實測尺寸</summary>
+            <div class="tool-body"><form id="measure">
           <label>正面寬（m）<input name="width" type="number" step="0.01" min="2" max="100" required></label>
           <label>前後深（m）<input name="depth" type="number" step="0.01" min="2" max="100" required></label>
           <label>地面至前簷（m）<input name="eave" type="number" step="0.01" min="2" max="20" required></label>
           <label>地面至屋脊（m）<input name="ridge" type="number" step="0.01" min="2.1" max="25" required></label>
           <label>前簷外伸（m）<input name="awning" type="number" step="0.01" min="0" max="10" required></label>
           <button>套用到模型</button><p id="report" role="status"></p>
-        </form>
-      </details>
-      <button class="save" id="export">匯出 GLB 模型</button>
-    </aside>
+        </form></div>
+          </details>
+          <details name="warehouse-tools">
+            <summary>重設視角與匯出</summary>
+            <div class="tool-body">
+              <button type="button" id="reset">重設視角</button>
+              <button type="button" id="export">下載 GLB 模型</button>
+            </div>
+          </details>
+        </aside>
+      </div>
+      <p class="caption" id="hint">拖曳旋轉 · 滾輪縮放</p>
+    </section>
   </div>
 </main>
 <script>
@@ -450,7 +516,7 @@ function setMode(view){
   eye=[dims.width*.53,Math.min(.9,dims.depth*.2),1.6];
   heading=0;
   pitch=.10;
-  for(const node of document.querySelectorAll('[data-view]')) node.setAttribute('aria-pressed',node.dataset.view===mode);
+  $('model-view').value=mode;
   $('viewName').textContent=views[mode][0];
   $('hint').textContent=views[mode][1];
   $('pad').hidden=mode!=='walk';
@@ -489,10 +555,20 @@ function moveFrame(now){
 function scheduleMovement(){
   if(moveRequest===null) moveRequest=requestAnimationFrame(moveFrame);
 }
-document.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>{
-  setMode(btn.dataset.view);
-  if(mode==='walk') canvas.focus({preventScroll:true});
-}));
+$('model-view').addEventListener('change',event=>{
+  setMode(event.currentTarget.value);
+  if(mode==='walk')canvas.focus({preventScroll:true});
+});
+function showTools(open){
+  $('tools').hidden=!open;
+  $('tools-toggle').setAttribute('aria-expanded',String(open));
+  $(open?'tools-close':'tools-toggle').focus({preventScroll:true});
+}
+$('tools-toggle').addEventListener('click',()=>showTools($('tools').hidden));
+$('tools-close').addEventListener('click',()=>showTools(false));
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&!$('tools').hidden)showTools(false);
+});
 $('reset').addEventListener('click',()=>setMode(mode));
 document.querySelectorAll('[data-zoom]').forEach(btn=>btn.addEventListener('click',()=>{
   zoom=clamp(zoom*(btn.dataset.zoom==='in'?.82:1.22),.45,3.5);

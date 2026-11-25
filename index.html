@@ -5,110 +5,182 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>騎樓與客廳｜可移動 3D 模型</title>
 <style>
-:root{color-scheme:light;--ink:#21372f;--muted:#576660;--green:#234939;--paper:#f7f6f0;--edge:#d9dfd5;--white:#fdfcf8;--active:#e7efe5;--warn:#8e533d;font-family:"PingFang TC","Microsoft JhengHei",system-ui,sans-serif}
-*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink)}
-button,select{font:inherit;color:inherit}button{cursor:pointer}button,select{border:1px solid #cfd8cd;border-radius:9px;background:var(--white);min-height:38px;padding:7px 11px}
-button:focus-visible,select:focus-visible,canvas:focus-visible,input:focus-visible{outline:2px solid #5b8e72;outline-offset:3px}
-button:hover:not(:disabled){background:#eaf0e7}button:disabled{opacity:.45;cursor:default}button[aria-pressed="true"]{background:var(--green);border-color:var(--green);color:#fffdf4}
-.top{max-width:1510px;margin:auto;padding:35px 36px 24px;display:flex;justify-content:space-between;align-items:end;gap:20px}
-h1,p,h2{margin:0}h1{font-size:clamp(26px,4vw,45px);font-weight:700;letter-spacing:-.035em;line-height:1.16}h2{font-size:17px}
-.subtitle{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.55}
-.export{font-size:13px;white-space:nowrap;color:var(--green);font-weight:650}
-.space-nav{max-width:1510px;margin:0 auto;padding:18px 36px 0;display:flex;gap:8px}
-.space-nav button{min-width:76px;min-height:42px;font-size:15px;font-weight:650}
-.space-nav + #house-view .top{padding-top:18px}
-#warehouse-view{display:block;width:100%;height:720px;border:0}
-#warehouse-view[hidden]{display:none}
-@media(max-width:880px){.space-nav{padding:14px 17px 0}}
-.layout{max-width:1510px;padding:0 36px 36px;margin:auto;display:grid;grid-template-columns:minmax(0,1fr) 264px;gap:16px;align-items:start}
-.viewer,.edit{border:1px solid var(--edge);background:var(--white);border-radius:17px;overflow:hidden;min-width:0}
-.bar{padding:12px 14px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--edge);font-size:13px}
-.bar select{max-width:100%;padding-right:20px}.tog{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:5px;min-height:34px;white-space:nowrap}
-.tog input{width:16px;height:16px;accent-color:var(--green)}
-.stage{position:relative;isolation:isolate;background:radial-gradient(ellipse at center,#f7f8f1 0%,#e0e8db 85%);height:clamp(386px,65vh,680px);overflow:hidden}
-canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
-canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
-.coords{position:absolute;pointer-events:none;top:14px;left:16px;color:#314a3d;font-size:12px;line-height:1.65;background:#fcfdf3eb;border:1px solid #d8e2d5;border-radius:10px;padding:5px 9px}
-.compass{position:absolute;right:15px;top:12px;width:72px;height:72px;border-radius:50%;pointer-events:none;background:#fcfdf3e8;border:1px solid #d4dfd1;color:#264a3a;font-size:11px}
+:root{
+    color-scheme:light;
+    --page:#f5f3ee;--surface:#fdfcf9;--ink:#222d27;--muted:#59645d;
+    --line:#deded4;--green:#294b3c;--tint:#e8eee7;--warning:#924a31;
+    --gutter:clamp(12px,2.65vw,42px);
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--page);color:var(--ink);font-size:14px}
+h1,h2,p{margin:0}
+button,select,input{font:inherit;color:inherit}
+button,select{
+    min-height:38px;border:1px solid var(--line);border-radius:9px;
+    background:var(--surface);padding:7px 11px
+}
+button,select,summary{cursor:pointer}
+button:hover:not(:disabled),summary:hover{background:var(--tint)}
+button:disabled,select:disabled{opacity:.48;cursor:default}
+:is(button,select,input,summary,canvas):focus-visible{outline:2px solid #638671;outline-offset:2px}
+button:is([aria-pressed="true"],[aria-expanded="true"]){
+    border-color:var(--green);background:var(--green);color:white
+}
+.viewer{position:relative;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:17px;background:var(--surface);box-shadow:0 10px 28px #3245360a}
+.bar{display:flex;align-items:center;gap:12px;min-height:57px;padding:9px 13px;border-bottom:1px solid var(--line)}
+.field{display:flex;align-items:center;gap:8px;min-width:0}
+.field span{color:var(--muted);white-space:nowrap;font-size:13px}
+.field select{width:100%;min-width:0;padding-right:8px}
+.view-field{flex:0 1 260px}
+.view-field select{font-weight:600}
+.version-field{flex:0 1 133px}
+.toolbar-actions{display:flex;gap:6px;margin-left:auto}
+.toolbar-actions button{white-space:nowrap}
+.stage{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 48% 38%,#f4f4ee 0%,#dee5db 100%)}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+canvas.grabbing,canvas:active{cursor:grabbing}
+canvas.moving{cursor:move}
+.coords{
+    position:absolute;top:13px;left:13px;max-width:calc(100% - 26px);padding:5px 9px;
+    border:1px solid #ffffff90;border-radius:8px;background:#fcfcf6ed;pointer-events:none;
+    font-size:12px;line-height:1.45;color:#35493d
+}
+.zoom{position:absolute;right:13px;bottom:13px;display:flex;gap:4px}
+.zoom button{min-width:42px;padding:0;font-size:19px;background:#fcfcf6ed}
+.caption{display:flex;align-items:center;min-height:39px;padding:8px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;line-height:1.5}
+.drawer{
+    position:absolute;z-index:5;top:12px;right:12px;width:min(326px,100% - 24px);max-height:calc(100% - 24px);
+    padding:0 14px 6px;overflow:auto;overscroll-behavior:contain;
+    border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:0 10px 34px #202b2440
+}
+.drawer-header{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:11px 0;background:var(--surface)}
+.drawer-header h2{font-size:15px}
+.drawer-header button{min-width:32px;min-height:32px;padding:0;font-size:20px;line-height:1}
+.drawer details{border-top:1px solid var(--line)}
+.drawer summary{padding:10px 5px;font-weight:600;border-radius:5px}
+.tool-body{display:grid;gap:8px;padding:0 4px 12px}
+.tool-body select{width:100%;max-width:100%;min-width:0}
+.tool-body label{font-size:13px}
+.tool-body button{font-size:13px}
+.tool-body p,.drawer .note{color:var(--muted);font-size:12px;line-height:1.55}
+.tool-actions{display:flex;flex-wrap:wrap;gap:6px}
+.tool-actions button{flex:1 0 auto}
+@media(max-width:580px){
+    .viewer{border-radius:13px}
+    .bar{gap:6px;min-height:52px;padding:7px}
+    .bar .field span{display:none}
+    .view-field{flex:1 1 auto;min-width:84px}
+    .version-field{flex:0 0 77px}
+    .bar :is(button,select){padding-inline:7px;font-size:12px}
+    .toolbar-actions{gap:4px}
+    .caption{padding-inline:10px}
+}
+
+.shell-header{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:1740px;
+    min-height:70px;margin:auto;padding:9px var(--gutter)
+}
+.shell-header h1{font-size:clamp(20px,2.4vw,29px);line-height:1.2;font-weight:680;letter-spacing:-.025em}
+.space-nav{display:flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:11px;background:#edeee7}
+.space-nav button{border-color:transparent;min-width:64px;min-height:34px;background:transparent;font-weight:550}
+.space-nav button[aria-pressed="true"]{background:var(--green);color:white}
+.layout{max-width:1740px;margin:auto;padding:0 var(--gutter) 15px}
+#warehouse-view{display:block;width:100%;height:680px;border:0}
+.stage{height:clamp(340px,calc(100dvh - 184px),970px)}
+.compass{
+    position:absolute;right:13px;top:13px;width:72px;height:72px;scale:.79;transform-origin:top right;
+    border:1px solid #ffffff90;border-radius:50%;background:#fcfcf6e8;color:#355348;font-size:11px;pointer-events:none
+}
+.viewer:has(.drawer:not([hidden])) .compass{visibility:hidden}
 .compass span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:650}
 .compass .core{background:#6d8678;width:5px;height:5px;border-radius:50%}
-.zoom{position:absolute;right:13px;bottom:12px;display:flex;gap:4px}
-.zoom button{min-width:41px;min-height:40px;font-size:18px;line-height:1;padding:6px;background:#fbfcf5}
-.label{position:absolute;pointer-events:none;translate:-50% -50%;border-radius:6px;background:#fdfdf5e9;padding:4px 7px;font-size:12px;font-weight:650;white-space:nowrap;border:1px solid #dae3d7}
+.label{
+    position:absolute;translate:-50% -50%;padding:4px 7px;pointer-events:none;white-space:nowrap;
+    border:1px solid var(--line);border-radius:6px;background:#fdfdf5ee;font-size:12px;font-weight:620
+}
 .label span{font-weight:450}
-@media(max-width:620px){.rear-label{font-size:10px;padding:2px 4px}.rear-label span{display:none}}
-.caption{font-size:13px;color:var(--muted);padding:13px 16px;line-height:1.6;min-height:46px}
-.lighting-bar{display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;padding:10px 16px;border-top:1px solid var(--edge);font-size:13px}
-.lighting-bar label{font-weight:650}.lighting-bar select{max-width:100%}
-.walk-controls{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:8px 14px;border-bottom:1px solid var(--edge);font-size:13px;background:var(--active)}
-.walk-controls[hidden]{display:none}
-.walk-controls button{min-width:44px;min-height:44px;touch-action:none;user-select:none}
-.walk-controls button:active{background:var(--green);color:var(--white)}
-.walk-controls p{color:var(--muted);margin-left:5px}
-.edit{padding:15px}.edit section{margin-top:17px}.edit .hint{font-size:12px;line-height:1.6;color:var(--muted);margin-top:7px;min-height:37px}
-.edit label{display:block;font-size:13px;font-weight:650;margin-bottom:7px}.edit select{width:100%;font-size:13px}
-.editmodes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:13px}.editmodes button{font-size:13px;white-space:nowrap}
-#location{font-size:12px;margin-top:10px;min-height:39px;line-height:1.65;color:var(--muted)}#location.warning{color:var(--warn)}
-.arrows{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
-.arrows button{font-size:13px;padding:6px}.north{grid-column:2}.west{grid-row:2;grid-column:1}.south{grid-row:2;grid-column:2}.east{grid-row:2;grid-column:3}
-.actions{display:grid;gap:6px;margin-top:10px}.actions button{font-size:13px}
-.note{max-width:1510px;margin:0 auto;padding:0 38px 24px;color:var(--muted);font-size:12px;line-height:1.65}
-#error{position:absolute;inset:15% 10%;display:grid;place-content:center;line-height:1.8;text-align:center;color:#633e2a;background:var(--white);padding:20px;border-radius:14px;border:1px solid #d5c6b4}#error[hidden]{display:none}
-@media(max-width:880px){.layout{padding:0 17px 20px;grid-template-columns:1fr}.top{padding:22px 17px 15px;align-items:start;flex-wrap:wrap}.stage{height:clamp(310px,56vh,560px)}.edit{display:grid;grid-template-columns:1fr 1fr;gap:0 13px}.edit h2,.edit .hint{grid-column:1/-1}.edit section{margin-top:12px}.editmodes{align-self:start}.edit .move-panel{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:9px}.actions{margin:0}.note{padding:0 17px 18px}}
-@media(max-width:490px){.top{gap:10px}.bar{gap:5px;padding:8px}.tog{margin-left:0}.stage{height:355px}.edit{padding:12px}.stage .coords{font-size:11px;top:8px;left:8px}.compass{scale:.82;transform-origin:top right;right:9px;top:8px}.caption{font-size:12px}.zoom{bottom:8px;right:8px}}
-.viewer:is(:fullscreen,.in-page-fullscreen){width:100%;height:100%;max-width:none;margin:0;display:flex;flex-direction:column;border:0;border-radius:0}
+.walk-controls,.fullscreen-controls{display:none}
+.walk-controls button{width:44px;height:44px;min-height:44px;padding:0;font-size:18px;touch-action:none;user-select:none}
+.walk-controls button:active{background:var(--green);color:white}
+.walk-controls [data-walk="arrowup"]{grid-area:1 / 2}
+.walk-controls [data-walk="arrowleft"]{grid-area:2 / 1}
+.walk-controls [data-walk="arrowdown"]{grid-area:2 / 2}
+.walk-controls [data-walk="arrowright"]{grid-area:2 / 3}
+.check{display:flex;align-items:center;gap:8px;min-height:29px}
+.check input{width:16px;height:16px;accent-color:var(--green)}
+.lighting-bar{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:7px 8px}
+.arrows{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.arrows button{padding-inline:2px}
+#location.warning{color:var(--warning)}
+.dimensions{display:grid;grid-template-columns:1fr auto;gap:5px 10px;margin:0;font-size:13px}
+.dimensions dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+#error{position:absolute;inset:15% 10%;display:grid;place-content:center;text-align:center;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--warning)}
+.viewer:is(:fullscreen,.in-page-fullscreen){width:100%;height:100%;margin:0;display:flex;flex-direction:column;border:0;border-radius:0}
 .viewer.in-page-fullscreen{position:fixed;inset:0;z-index:1000}
 .page-has-fullscreen{overflow:hidden}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
-.fullscreen-controls{display:none}
-.viewer:is(:fullscreen,.in-page-fullscreen) :is(.bar,.walk-controls,.lighting-bar,.caption,.zoom){display:none}
+.viewer:is(:fullscreen,.in-page-fullscreen) :is(.bar,.caption,.zoom,.drawer){display:none}
 .viewer:is(:fullscreen,.in-page-fullscreen) .fullscreen-controls{
     position:absolute;z-index:2;top:max(12px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));
     display:flex;align-items:center;gap:6px;font-size:13px
 }
 .fullscreen-controls select{min-width:0;max-width:min(14rem,53vw)}
 .fullscreen-controls button{white-space:nowrap}
-.fullscreen-controls button,.fullscreen-controls select{min-height:40px;background:#fcfdf5f2}
-.viewer:is(:fullscreen,.in-page-fullscreen) .compass{top:auto;bottom:13px;right:max(14px,env(safe-area-inset-right))}
-@media(max-width:550px){
+.fullscreen-controls :is(button,select){min-height:40px;background:#fcfcf6f2}
+.viewer:is(:fullscreen,.in-page-fullscreen) .compass{
+    visibility:visible;top:auto;bottom:13px;right:max(14px,env(safe-area-inset-right));transform-origin:bottom right
+}
+@media(max-width:580px){
+    .shell-header{min-height:63px}
+    .space-nav button{min-width:53px;padding-inline:8px}
+    .stage{height:clamp(335px,calc(100dvh - 164px),820px)}
     .viewer:is(:fullscreen,.in-page-fullscreen) .coords{top:calc(max(12px,env(safe-area-inset-top)) + 46px)}
+    .rear-label span{display:none}
+    .rear-label{font-size:10px;padding:3px 4px}
 }
 @media(any-pointer:coarse){
-    .fullscreen-controls button,.fullscreen-controls select{min-height:44px}
-    .viewer:is(:fullscreen,.in-page-fullscreen) .zoom{display:flex;bottom:max(12px,env(safe-area-inset-bottom));right:max(14px,env(safe-area-inset-right))}
-    .viewer:is(:fullscreen,.in-page-fullscreen) .compass{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 50px)}
-    .viewer:is(:fullscreen,.in-page-fullscreen) .walk-controls:not([hidden]){
-        position:absolute;z-index:3;bottom:max(12px,env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));
-        display:grid;grid-template-columns:repeat(3,44px);gap:4px;background:none;border:0;padding:0
+    .fullscreen-controls :is(button,select){min-height:44px}
+    .viewer:is(:fullscreen,.in-page-fullscreen) .zoom{
+        display:flex;bottom:max(12px,env(safe-area-inset-bottom));right:max(14px,env(safe-area-inset-right))
     }
-    .viewer:is(:fullscreen,.in-page-fullscreen) .walk-controls :not([data-walk]){display:none}
-    .viewer:is(:fullscreen,.in-page-fullscreen) .walk-controls [data-walk]{font-size:0;padding:0}
-    .viewer:is(:fullscreen,.in-page-fullscreen) .walk-controls [data-walk]::before{font-size:18px}
-    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowup"]{grid-area:1 / 2}
-    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowleft"]{grid-area:2 / 1}
-    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowdown"]{grid-area:2 / 2}
-    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowright"]{grid-area:2 / 3}
-    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowup"]::before{content:"↑" / ""}
-    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowleft"]::before{content:"←" / ""}
-    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowdown"]::before{content:"↓" / ""}
-    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowright"]::before{content:"→" / ""}
+    .viewer:is(:fullscreen,.in-page-fullscreen) .compass{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 51px)}
+    .walk-controls:not([hidden]){
+        position:absolute;z-index:3;bottom:max(12px,env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));
+        display:grid;grid-template-columns:repeat(3,44px);gap:4px
+    }
 }
 </style>
-    <meta name="model-revision" content="554aa2b60a330b4e">
+    <meta name="model-revision" content="0bed00afd64ab819">
 </head>
 <body>
-<nav class="space-nav" aria-label="切換 3D 模型">
-    <button type="button" data-space="house" aria-controls="house-view" aria-pressed="true">客廳</button>
-    <button type="button" data-space="warehouse" aria-controls="warehouse-view" aria-pressed="false">倉庫</button>
-</nav>
-<div id="house-view">
-<header class="top">
-    <div><h1>房屋外觀與騎樓客廳 3D 模型</h1><p class="subtitle">坐東朝西 ｜ 外廳正面 4.20 m ｜ 側面柱間 2.50 m ｜ 外廳天花板 3.50 m</p></div>
-    <button class="export" id="export" type="button">下載目前配置為 GLB</button>
+<header class="shell-header">
+    <h1 id="space-title">房屋 3D 模型</h1>
+    <nav class="space-nav" aria-label="切換模型">
+        <button type="button" data-space="house" aria-controls="house-view" aria-pressed="true">住宅</button>
+        <button type="button" data-space="warehouse" aria-controls="warehouse-view" aria-pressed="false">倉庫</button>
+    </nav>
 </header>
+<div id="house-view">
 <main class="layout">
     <section class="viewer" id="viewer" aria-label="3D 空間視圖">
         <div class="bar">
+            <label class="field view-field"><span>視角</span>
+                <select id="model-view" aria-label="模型視角"><option value="" disabled>切換視角</option></select>
+            </label>
+            <label class="field version-field"><span>版本</span>
+                <select id="exterior-version" aria-label="切換改造前後">
+                <option value="design">改造後</option>
+                <option value="actual">改造前</option>
+            </select>
+            </label>
+            <div class="toolbar-actions">
+                <button type="button" id="fullscreen" aria-controls="viewer">全螢幕</button>
+                <button type="button" id="tools-toggle" aria-controls="tools" aria-expanded="false">工具</button>
+            </div>
+        </div>
+        <div id="view-actions" hidden>
             <button type="button" id="exterior" aria-pressed="true">外觀 3D</button>
             <button type="button" id="walk" aria-pressed="false">一樓走動</button>
             <button type="button" id="walk-upstairs" aria-pressed="false">二樓走動</button>
@@ -127,28 +199,12 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
             <button type="button" id="plan" aria-pressed="false">一樓平面</button>
             <button type="button" id="upper-plan" aria-pressed="false">二樓與樓梯</button>
             <button type="button" id="third-plan" aria-pressed="false">三樓平面</button>
-            <select id="exterior-version" aria-label="切換改造前後">
-                <option value="design">改造後</option>
-                <option value="actual">改造前</option>
-            </select>
             <select id="detail-view" aria-label="查看空間細節">
                 <option value="">查看細節</option>
                 <option value="mirror">外廳｜全身鏡</option>
                 <option value="pegboard">客廳｜掛板</option>
                 <option value="coat">玄關｜掛衣區與穿鞋座</option>
             </select>
-            <button type="button" id="front-shutter-toggle" hidden>升起正面捲門</button>
-            <button type="button" id="fullscreen" aria-controls="viewer">全螢幕</button>
-            <label class="tog"><input type="checkbox" id="section">剖開遮擋的牆</label>
-        </div>
-        <div class="walk-controls" id="walk-controls" role="group" aria-label="漫遊方向" hidden>
-            <button type="button" data-walk="arrowup" aria-keyshortcuts="W ArrowUp">W 前進</button>
-            <button type="button" data-walk="arrowdown" aria-keyshortcuts="S ArrowDown">S 後退</button>
-            <button type="button" data-walk="arrowleft" aria-keyshortcuts="A ArrowLeft">A 左移</button>
-            <button type="button" data-walk="arrowright" aria-keyshortcuts="D ArrowRight">D 右移</button>
-            <button type="button" id="walk-reset">回到起點</button>
-            <button type="button" id="west-window-toggle" aria-pressed="false" hidden>開啟落地窗</button>
-            <p>按住 WASD、方向鍵或畫面按鈕走動。拖曳畫面轉頭。</p>
         </div>
         <div class="stage" id="stage">
             <canvas id="scene" tabindex="0" aria-label="可旋轉的 3D 模型。拖曳旋轉，滾輪縮放。"></canvas>
@@ -166,50 +222,84 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
             <div class="label" id="inner-label">客廳 <span></span></div>
             <div class="zoom"><button type="button" id="smaller" aria-label="縮小">−</button><button type="button" id="larger" aria-label="放大">＋</button></div>
             <div id="error" role="alert" hidden>目前的瀏覽器無法顯示 3D。仍可按「下載目前配置為 GLB」。</div>
-        </div>
-        <div class="lighting-bar">
-            <label for="outer-light-mode">外廳燈光</label>
-            <select id="outer-light-mode">
-                <option value="day">日光</option>
-                <option value="entry">玄關｜換鞋與走道</option>
-                <option value="mahjong">麻將｜桌燈＋輔燈</option>
-                <option value="full">全亮</option>
-            </select>
-            <label for="living-light-mode">客廳燈光</label>
-            <select id="living-light-mode">
-                <option value="day">日光</option>
-                <option value="everyday">日常｜主燈＋輔燈</option>
-                <option value="movie">觀影｜電視背光</option>
-                <option value="full">全亮｜三區開啟</option>
-            </select>
-        </div>
-        <p class="caption" id="caption">拖曳畫面旋轉，使用滾輪或 ＋／− 縮放。</p>
-    </section>
-    <aside class="edit" aria-label="家具設定">
-        <h2>家具試擺</h2>
-        <p class="hint">選擇家具後可拖曳、微調或旋轉。按「儲存家具配置」可保留位置與角度。</p>
-        <div class="editmodes"><button type="button" id="look" aria-pressed="true">旋轉觀看</button><button type="button" id="move" aria-pressed="false">移動家具</button></div>
-        <section>
-            <label for="object">選擇家具</label>
-            <select id="object"><option value="">點模型中的家具，或從這裡選</option></select>
-            <p id="location" aria-live="polite">一次移動一件家具。</p>
-        </section>
-        <section class="move-panel" aria-label="調整家具">
-            <div class="arrows">
+            <div class="walk-controls" id="walk-controls" role="group" aria-label="漫遊方向" hidden>
+                <button type="button" data-walk="arrowup" aria-label="前進" aria-keyshortcuts="W ArrowUp">↑</button>
+                <button type="button" data-walk="arrowdown" aria-label="後退" aria-keyshortcuts="S ArrowDown">↓</button>
+                <button type="button" data-walk="arrowleft" aria-label="向左移動" aria-keyshortcuts="A ArrowLeft">←</button>
+                <button type="button" data-walk="arrowright" aria-label="向右移動" aria-keyshortcuts="D ArrowRight">→</button>
+            </div>
+            <aside class="drawer" id="tools" aria-labelledby="tools-heading" hidden>
+                <div class="drawer-header"><h2 id="tools-heading">工具</h2><button type="button" id="tools-close" aria-label="關閉工具">×</button></div>
+                <details name="house-tools">
+                    <summary>觀看與燈光</summary>
+                    <div class="tool-body">
+                        <label class="check"><input type="checkbox" id="section">剖開遮擋的牆</label>
+                        <div class="lighting-bar">
+                            <label for="outer-light-mode">外廳燈光</label>
+                            <select id="outer-light-mode">
+                                <option value="day">日光</option>
+                                <option value="entry">玄關｜換鞋與走道</option>
+                                <option value="mahjong">麻將｜桌燈＋輔燈</option>
+                                <option value="full">全亮</option>
+                            </select>
+                            <label for="living-light-mode">客廳燈光</label>
+                            <select id="living-light-mode">
+                                <option value="day">日光</option>
+                                <option value="everyday">日常｜主燈＋輔燈</option>
+                                <option value="movie">觀影｜電視背光</option>
+                                <option value="full">全亮｜三區開啟</option>
+                            </select>
+                        </div>
+                        <div class="tool-actions">
+                            <button type="button" id="walk-reset" hidden>回到起點</button>
+                            <button type="button" id="front-shutter-toggle" hidden>升起正面捲門</button>
+                            <button type="button" id="west-window-toggle" aria-pressed="false" hidden>開啟落地窗</button>
+                        </div>
+                    </div>
+                </details>
+                <details name="house-tools">
+                    <summary>家具試擺</summary>
+                    <div class="tool-body">
+                        <div class="tool-actions"><button type="button" id="look" aria-pressed="true">旋轉觀看</button><button type="button" id="move" aria-pressed="false">移動家具</button></div>
+                        <label for="object">選擇家具</label>
+                        <select id="object"><option value="">選擇家具</option></select>
+                        <p id="location" aria-live="polite"></p>
+                        <section class="tool-body" id="move-panel" aria-label="調整家具" hidden>
+                            <div class="arrows">
                 <button type="button" class="north" data-nudge="0,-.1">北 ↑</button><button type="button" class="west" data-nudge="-.1,0">西 ←</button>
                 <button type="button" class="south" data-nudge="0,.1">南 ↓</button><button type="button" class="east" data-nudge=".1,0">東 →</button>
             </div>
-            <div class="actions">
-                <button id="turn-45" type="button" data-turn="45">家具轉 45°</button>
-                <button id="turn" type="button" data-turn="90">家具轉 90°</button>
-                <button id="save-layout" type="button">儲存家具配置</button>
-                <button id="reset" type="button">還原原始配置</button>
-                <p id="layout-status" class="hint" role="status" hidden></p>
-            </div>
-        </section>
-    </aside>
+                            <div class="tool-actions">
+                                <button type="button" id="turn-45">轉 45°</button>
+                                <button type="button" id="turn">轉 90°</button>
+                            </div>
+                        </section>
+                        <div class="tool-actions">
+                            <button type="button" id="save-layout">儲存配置</button>
+                            <button type="button" id="reset">還原原始配置</button>
+                        </div>
+                        <p id="layout-status" role="status" hidden></p>
+                    </div>
+                </details>
+                <details name="house-tools">
+                    <summary>模型資訊與匯出</summary>
+                    <div class="tool-body">
+                        <dl class="dimensions">
+                            <dt>房屋朝向</dt><dd>坐東朝西</dd>
+                            <dt>外廳正面</dt><dd>4.20 m</dd>
+                            <dt>側面柱間</dt><dd>2.50 m</dd>
+                            <dt>外廳天花板</dt><dd>3.50 m</dd>
+                        </dl>
+                        <p class="note">改造方案的新牆外側與原柱面切齊，入口柱往外廳凸出約 15 公分。外廳柱面與梁上的磁磚採接近客廳牆面的暖白色，保留磚縫。玄關六角地磚沿用原有配色。客廳採木地板，牆面、梁、柱及踢腳板皆為平整漆面。</p>
+                        <p class="note" id="view-note" hidden></p>
+                        <button id="export" type="button">下載 GLB 模型</button>
+                    </div>
+                </details>
+            </aside>
+        </div>
+        <p class="caption" id="caption">拖曳旋轉 · 滾輪縮放</p>
+    </section>
 </main>
-<p class="note">改造方案的新牆外側與原柱面切齊，入口柱往外廳凸出約 15 公分。外廳柱面與梁上的磁磚採接近客廳牆面的暖白色，保留磚縫。玄關六角地磚沿用原有配色。客廳採木地板，牆面、梁、柱及踢腳板皆為平整漆面。</p>
 </div>
 <iframe id="warehouse-view" title="倉庫現況 3D 模型" hidden></iframe>
 <script>
@@ -223,6 +313,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
     function fitWarehouse() {
         const content = warehouse.contentDocument?.querySelector('main');
         if (warehouse.hidden || !content) return;
+        warehouse.contentDocument.documentElement.style.setProperty('--host-height', window.innerHeight + 'px');
         const height = Math.ceil(content.getBoundingClientRect().height) + 1;
         if (height > 1) warehouse.style.height = height + 'px';
     }
@@ -240,13 +331,15 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 
     function showSpace(space) {
         const isWarehouse = space === 'warehouse';
+        document.getElementById('space-title').textContent = isWarehouse ? '倉庫 3D 模型' : '房屋 3D 模型';
         house.hidden = isWarehouse;
         warehouse.hidden = !isWarehouse;
         for (const button of switches) {
             button.setAttribute('aria-pressed', String(button.dataset.space === space));
         }
         if (isWarehouse && !warehouse.hasAttribute('src')) {
-            warehouse.src = './warehouse.html';
+            const revision = document.querySelector('meta[name="model-revision"]')?.content;
+            warehouse.src = revision ? './warehouse.html?v=' + revision : './warehouse.html';
         }
         if (isWarehouse) fitWarehouse();
         try {
@@ -256,6 +349,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
         }
     }
 
+    window.addEventListener('resize', fitWarehouse);
     for (const button of switches) {
         button.addEventListener('click', () => showSpace(button.dataset.space));
     }
@@ -3983,25 +4077,26 @@ function updateEditing(){
         location.textContent=(changed.length?changed.join("、"):"位於原始位置")+"，旋轉 "+degrees+"°"+
             (collision?"。與"+(collision.info?.[0]||names[collision.key])+"重疊。":"。");
     }else location.textContent="點選平面中的家具，或從選單選取。";
+    $("move-panel").hidden=!selected;
     buttons.forEach(b=>b.disabled=!selected);
     turnButtons.forEach(b=>b.disabled=!selected);
     $("reset").disabled=!editable.some(g=>g.angle||g.shift.some(Boolean));
 }
 function updateMode(){
     lightMenu.disabled=outerLightMenu.disabled=exteriorMenu.value==="actual";
-    detailMenu.hidden=exteriorMenu.value==="actual";
+    for(const menu of viewMenus)menu.querySelector("[data-model-details]").disabled=exteriorMenu.value==="actual";
     detailMenu.value=view==="preset"?(data.cameras[preset].detailView??""):"";
     $("look").setAttribute("aria-pressed",mode==="look");
     $("move").setAttribute("aria-pressed",mode==="move");
     canvas.classList.toggle("moving",mode==="move");
-    $("caption").textContent=view==="walk"?(walkStart==="outside"?
-        "從前院可沿南側棚下步道、北側和後側窄巷走動。拖曳畫面轉頭。":
-        "可沿樓梯上下樓，拖曳畫面可轉頭。"):
-        view==="thirdPlan"?"三樓尺寸與門窗位置依照片及既有模型估算。":
+    $("caption").textContent=view==="walk"?"WASD 或方向鍵走動 · 拖曳轉頭":
+        mode==="move"?"拖曳家具 · 方向鍵每次微調 10 公分":
+        showingPlan()?"拖曳平移 · 滾輪縮放":"拖曳旋轉 · 滾輪縮放";
+    const viewNote=$("view-note");
+    viewNote.textContent=view==="thirdPlan"?"三樓尺寸與門窗位置依照片及既有模型估算。":
         view==="upperPlan"?"書房約 4.20 × 4.80 公尺。二樓主空間樓高暫按 "+upstairs.height.toFixed(2)+" 公尺建模。":
-        view==="plan"?"客廳前緣至廚房後牆約 "+data.designDimensions.rear.livingToKitchenLength+" m。走廊及浴室依照片估算。":
-        showingExterior()?"拖曳旋轉外觀，也可選「室外走動」從地面觀看。":
-        mode==="move"?"直接拖曳家具，或使用方向鍵每次移動 10 公分。":"拖曳畫面旋轉，使用滾輪或 ＋／− 縮放。要試擺家具，先選「移動家具」。";
+        view==="plan"?"客廳前緣至廚房後牆約 "+data.designDimensions.rear.livingToKitchenLength+" m。走廊及浴室依照片估算。":"";
+    viewNote.hidden=!viewNote.textContent;
     updateEditing();schedule();
 }
 function hitsWalkBox(x,y,b){
@@ -4205,16 +4300,38 @@ function stopWalk(){
     if(walkAnimation!==null)cancelAnimationFrame(walkAnimation);
     walkAnimation=lastWalkTime=null;
 }
-const viewer=$("viewer"), fullscreenButton=$("fullscreen"), fullscreenView=$("fullscreen-view");
-const viewButtons=Array.from(viewer.querySelectorAll(".bar > button[aria-pressed]"));
-for(const button of viewButtons)fullscreenView.add(new Option(button.textContent,button.id));
-for(const [source,label,prefix] of [[$("orbit-floor"),"俯看樓層","floor:"],[detailMenu,"空間細節","detail:"]]){
-    const group=document.createElement("optgroup");
-    group.label=label;
-    for(const option of Array.from(source.options).slice(1)){
-        group.append(new Option(option.textContent,prefix+option.value));
+const viewer=$("viewer"), fullscreenButton=$("fullscreen");
+const toolsDrawer=$("tools"), toolsButton=$("tools-toggle");
+function showTools(open){
+    toolsDrawer.hidden=!open;
+    toolsButton.setAttribute("aria-expanded",String(open));
+    (open?$("tools-close"):toolsButton).focus({preventScroll:true});
+}
+toolsButton.onclick=()=>showTools(toolsDrawer.hidden);
+$("tools-close").onclick=()=>showTools(false);
+const viewMenus=[$("model-view"),$("fullscreen-view")];
+const viewButtons=Array.from($("view-actions").querySelectorAll("button"));
+const viewGroups=[
+    ["外觀與整棟",["exterior","orbit"]],
+    ["漫遊",["walk","walk-upstairs","walk-third","walk-outside","walk-study-bedroom","walk-west-bedroom","walk-balcony"]],
+    ["樓層平面",["plan","upper-plan","third-plan"]]
+];
+for(const menu of viewMenus){
+    for(const [label,ids] of viewGroups){
+        const group=document.createElement("optgroup");
+        group.label=label;
+        for(const id of ids)group.append(new Option($(id).textContent,id));
+        menu.append(group);
     }
-    fullscreenView.append(group);
+    for(const [source,label,prefix] of [[$("orbit-floor"),"俯看樓層","floor:"],[detailMenu,"空間細節","detail:"]]){
+        const group=document.createElement("optgroup");
+        group.label=label;
+        if(prefix==="detail:")group.dataset.modelDetails="";
+        for(const option of Array.from(source.options).slice(1)){
+            group.append(new Option(option.textContent,prefix+option.value));
+        }
+        menu.append(group);
+    }
 }
 function syncFullscreen(){
     const active=document.fullscreenElement===viewer||viewer.classList.contains("in-page-fullscreen");
@@ -4243,15 +4360,16 @@ async function toggleFullscreen(){
 }
 fullscreenButton.onclick=$("fullscreen-exit").onclick=toggleFullscreen;
 document.addEventListener("fullscreenchange",syncFullscreen);
-fullscreenView.onchange=()=>{
-    const [key,value]=fullscreenView.value.split(":");
+function changeView(event){
+    const [key,value]=event.currentTarget.value.split(":");
     const menu=key==="floor"?$("orbit-floor"):key==="detail"?detailMenu:null;
     if(menu){
         menu.value=value;
         menu.onchange();
     }else $(key)?.click();
-    canvas.focus({preventScroll:true});
-};
+    if(view==="walk"||event.currentTarget===$("fullscreen-view"))canvas.focus({preventScroll:true});
+}
+for(const menu of viewMenus)menu.onchange=changeView;
 function setView(value){
     view=value;
     $("exterior").setAttribute("aria-pressed",view==="exterior");
@@ -4268,10 +4386,11 @@ function setView(value){
     $("upper-plan").setAttribute("aria-pressed",view==="upperPlan");
     $("third-plan").setAttribute("aria-pressed",view==="thirdPlan");
     const detail=view==="preset"?data.cameras[preset].detailView:null;
-    fullscreenView.value=view==="preset"?(detail?"detail:"+detail:""):
+    const viewChoice=view==="preset"?(detail?"detail:"+detail:""):
         view==="orbit"&&orbitFloor!==-1?"floor:"+orbitFloor:
         viewButtons.find(button=>button.getAttribute("aria-pressed")==="true")?.id??"";
-    $("walk-controls").hidden=view!=="walk";
+    for(const menu of viewMenus)menu.value=viewChoice;
+    $("walk-controls").hidden=$("walk-reset").hidden=view!=="walk";
     section.disabled=view==="walk"||showingExterior()||wholeInterior();
     if(view!=="walk")stopWalk();
     section.checked=view==="orbit"||showingPlan();
@@ -4472,6 +4591,10 @@ document.addEventListener("keydown",e=>{
         setInPageFullscreen(false);
         return;
     }
+    if(e.key==="Escape"&&!toolsDrawer.hidden&&document.fullscreenElement!==viewer){
+        showTools(false);
+        return;
+    }
     const key=walkKey(e);
     if(view!=="walk"||!Object.hasOwn(walkDirections,key)||e.altKey||e.ctrlKey||e.metaKey||
         e.target?.closest?.("input, select, textarea, [contenteditable]"))return;
@@ -4592,6 +4715,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=554aa2b60a330b4e" defer></script>
+    <script src="./check-version.js?v=0bed00afd64ab819" defer></script>
 </body>
 </html>

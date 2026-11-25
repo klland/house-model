@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="71ca476085ad442a">
+    <meta name="model-revision" content="81650663364a49d3">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -2706,15 +2706,17 @@ function buildSecondFloor(data){
         }
         data.interiorVariants.names[mirror]="外廳側全身鏡";
         data.interiorVariants.names[pegboard]="客廳側木質洞洞板";
-        box(mirror,sideEnd-.020,pillarNorth+.008,.010,
-            sideEnd-.004,pillarSouth-.008,entryCeiling-.014,[147,122,99,0]);
-        box(mirror,sideEnd-.023,pillarNorth+.014,.016,
-            sideEnd-.020,pillarSouth-.014,entryCeiling-.020,[205,218,222,48]);
+        const mirrorTop=1.80, mirrorInset=.020;
+        box(mirror,sideEnd-.020,pillarNorth+mirrorInset,.010,
+            sideEnd-.004,pillarSouth-mirrorInset,mirrorTop,[147,122,99,0]);
+        box(mirror,sideEnd-.023,pillarNorth+mirrorInset+.006,.016,
+            sideEnd-.020,pillarSouth-mirrorInset-.006,mirrorTop,[205,218,222,48]);
 
         const boardFace=dividerEnd+.018, boardWood=[199,171,140,2];
-        box(pegboard,dividerEnd,pillarNorth+.050,1.02,boardFace,pillarSouth-.050,1.64,boardWood);
-        for(let row=0;row<8;row++){
-            const z=1.085+row*.070;
+        const boardBottom=1.45, boardHeight=.10, hookHeight=boardBottom+.068;
+        box(pegboard,dividerEnd,pillarNorth+.050,boardBottom,
+            boardFace,pillarSouth-.050,boardBottom+boardHeight,boardWood);
+        for(const z of [boardBottom+.032,hookHeight]){
             for(let col=0;col<5;col++){
                 const y=pillarCenter+(col-2)*.069;
                 const hole=Array.from({length:12},(_,i)=>{
@@ -2725,7 +2727,7 @@ function buildSecondFloor(data){
             }
         }
         for(const y of [pillarCenter-.138,pillarCenter,pillarCenter+.138]){
-            const z=1.505, metal=[80,73,65,0];
+            const z=hookHeight, metal=[80,73,65,0];
             beam(pegboard,[boardFace,y,z],[boardFace+.028,y,z],.010,.011,metal);
             beam(pegboard,[boardFace+.023,y,z],[boardFace+.033,y,z+.022],.010,.011,metal);
         }
@@ -2869,8 +2871,8 @@ function buildSecondFloor(data){
             if(camera.target[0]>=-.41&&camera.target[0]<=3.27)camera.target[0]=fitHall(camera.target[0]);
         }
         data.cameras.push(
-            {name:"外廳｜柱面全身鏡",pillarView:"mirror",eye:[sideEnd-2.18,3.82,1.70],target:[sideEnd,pillarCenter,1.72],fov:115},
-            {name:"客廳｜柱面掛板",pillarView:"pegboard",eye:[dividerEnd+1.25,3.96,1.55],target:[dividerEnd,pillarCenter,1.33],fov:65}
+            {name:"外廳｜柱面全身鏡",pillarView:"mirror",eye:[sideEnd-1.84,3.80,1.55],target:[sideEnd,pillarCenter,.94],fov:94},
+            {name:"客廳｜柱面掛板",pillarView:"pegboard",eye:[dividerEnd+1.25,3.96,1.58],target:[dividerEnd,pillarCenter,1.50],fov:52}
         );
         Object.assign(data.designDimensions,{
             westWindow:{sillAboveFinishedFloor:1.50,width:1.30,height:.40},
@@ -4486,6 +4488,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=71ca476085ad442a" defer></script>
+    <script src="./check-version.js?v=81650663364a49d3" defer></script>
 </body>
 </html>

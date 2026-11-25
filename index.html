@@ -60,9 +60,41 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer.in-page-fullscreen{position:fixed;inset:0;z-index:1000}
 .page-has-fullscreen{overflow:hidden}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
-.viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
+.fullscreen-controls{display:none}
+.viewer:is(:fullscreen,.in-page-fullscreen) :is(.bar,.walk-controls,.lighting-bar,.caption,.zoom){display:none}
+.viewer:is(:fullscreen,.in-page-fullscreen) .fullscreen-controls{
+    position:absolute;z-index:2;top:max(12px,env(safe-area-inset-top));right:max(14px,env(safe-area-inset-right));
+    display:flex;align-items:center;gap:6px;font-size:13px
+}
+.fullscreen-controls select{min-width:0;max-width:min(14rem,53vw)}
+.fullscreen-controls button{white-space:nowrap}
+.fullscreen-controls button,.fullscreen-controls select{min-height:40px;background:#fcfdf5f2}
+.viewer:is(:fullscreen,.in-page-fullscreen) .compass{top:auto;bottom:13px;right:max(14px,env(safe-area-inset-right))}
+@media(max-width:550px){
+    .viewer:is(:fullscreen,.in-page-fullscreen) .coords{top:calc(max(12px,env(safe-area-inset-top)) + 46px)}
+}
+@media(any-pointer:coarse){
+    .fullscreen-controls button,.fullscreen-controls select{min-height:44px}
+    .viewer:is(:fullscreen,.in-page-fullscreen) .zoom{display:flex;bottom:max(12px,env(safe-area-inset-bottom));right:max(14px,env(safe-area-inset-right))}
+    .viewer:is(:fullscreen,.in-page-fullscreen) .compass{bottom:calc(max(12px,env(safe-area-inset-bottom)) + 50px)}
+    .viewer:is(:fullscreen,.in-page-fullscreen) .walk-controls:not([hidden]){
+        position:absolute;z-index:3;bottom:max(12px,env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));
+        display:grid;grid-template-columns:repeat(3,44px);gap:4px;background:none;border:0;padding:0
+    }
+    .viewer:is(:fullscreen,.in-page-fullscreen) .walk-controls :not([data-walk]){display:none}
+    .viewer:is(:fullscreen,.in-page-fullscreen) .walk-controls [data-walk]{font-size:0;padding:0}
+    .viewer:is(:fullscreen,.in-page-fullscreen) .walk-controls [data-walk]::before{font-size:18px}
+    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowup"]{grid-area:1 / 2}
+    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowleft"]{grid-area:2 / 1}
+    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowdown"]{grid-area:2 / 2}
+    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowright"]{grid-area:2 / 3}
+    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowup"]::before{content:"↑" / ""}
+    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowleft"]::before{content:"←" / ""}
+    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowdown"]::before{content:"↓" / ""}
+    .viewer:is(:fullscreen,.in-page-fullscreen) [data-walk="arrowright"]::before{content:"→" / ""}
+}
 </style>
-    <meta name="model-revision" content="a9a47834dbdf9dc5">
+    <meta name="model-revision" content="554aa2b60a330b4e">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -121,6 +153,12 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
         <div class="stage" id="stage">
             <canvas id="scene" tabindex="0" aria-label="可旋轉的 3D 模型。拖曳旋轉，滾輪縮放。"></canvas>
             <div class="coords" id="view-label">外觀 3D</div>
+            <div class="fullscreen-controls" role="group" aria-label="全螢幕控制">
+                <select id="fullscreen-view" aria-label="全螢幕視角">
+                    <option value="" disabled>切換視角</option>
+                </select>
+                <button type="button" id="fullscreen-exit">離開全螢幕</button>
+            </div>
             <div class="compass" id="compass" aria-label="方向指示">
                 <span class="core"></span><span data-dir="n">北</span><span data-dir="e">東</span><span data-dir="s">南</span><span data-dir="w">西</span>
             </div>
@@ -171,7 +209,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
         </section>
     </aside>
 </main>
-<p class="note">改造方案的新牆外側與原柱面切齊，入口柱往外廳凸出約 15 公分。外廳的牆磚與玄關六角地磚統一為淺米灰色，保留磚縫。客廳採木地板，牆面、梁、柱及踢腳板皆為平整漆面。</p>
+<p class="note">改造方案的新牆外側與原柱面切齊，入口柱往外廳凸出約 15 公分。外廳柱面與梁上的磁磚採接近客廳牆面的暖白色，保留磚縫。玄關六角地磚沿用原有配色。客廳採木地板，牆面、梁、柱及踢腳板皆為平整漆面。</p>
 </div>
 <iframe id="warehouse-view" title="倉庫現況 3D 模型" hidden></iframe>
 <script>
@@ -2616,7 +2654,7 @@ function buildSecondFloor(data){
         const doorHead=2.20, sideStart=westOutside+.48, sideEnd=sideStart+2.50;
         const dividerEnd=sideEnd+.181;
         const glass=[190,210,204,5], gray=[62,64,64,0];
-        const hallTileColor=[221,220,213], hallTile=[...hallTileColor,52];
+        const hallTile=[...entryPaint.slice(0,3),52];
         data.layers.afterSkirting=data.layers.afterSkirting.map(b=>
             b[0]>=dividerEnd&&b[0]<8.14&&b[9]===27
                 ?[...b.slice(0,6),...entryPaint,b[10]]:b);
@@ -2891,9 +2929,7 @@ function buildSecondFloor(data){
             if(!isInsideHall(prism))return [prism];
             const points=prism===border?roundTileBorder(prism[0]):
                 prism===grout?tileOutline:cutHexagon(prism[0]);
-            if(points.length<3)return [];
-            const color=prism===border||prism===grout?prism[3]:hallTileColor;
-            return [[points,prism[1],prism[2],color,...prism.slice(4)]];
+            return points.length>=3?[[points,...prism.slice(1)]]:[];
         });
         const shiftHall=(key,dx,dz=0)=>{
             for(const b of data.layers[key]){
@@ -3330,7 +3366,7 @@ void main(){
     vec2 lines=vec2(1.)-smoothstep(vec2(.022,.010)-a,vec2(.022,.010)+a,seam);
     float m=max(lines.x,lines.y);
     if(!paintedPier)color*=1.+(noise(floor(coord))-.5)*.047;
-    vec3 grout=whiteBrickJoint?vec3(.94,.94,.92):color*(paintedPier?.86:pat==12.?.60:pat==20.?.74:.88);
+    vec3 grout=whiteBrickJoint?vec3(.94,.94,.92):color*(paintedPier?.93:pat==12.?.60:pat==20.?.74:.88);
     color=mix(color,grout,m*(whiteBrickJoint?.96:.90));
     if(pat==20.){
       float texture=sin(u*243.+p.z*83.+sin(p.z*120.)+noise(floor(coord))*4.);
@@ -4169,10 +4205,20 @@ function stopWalk(){
     if(walkAnimation!==null)cancelAnimationFrame(walkAnimation);
     walkAnimation=lastWalkTime=null;
 }
-const viewer=$("viewer"), fullscreenButton=$("fullscreen");
+const viewer=$("viewer"), fullscreenButton=$("fullscreen"), fullscreenView=$("fullscreen-view");
+const viewButtons=Array.from(viewer.querySelectorAll(".bar > button[aria-pressed]"));
+for(const button of viewButtons)fullscreenView.add(new Option(button.textContent,button.id));
+for(const [source,label,prefix] of [[$("orbit-floor"),"俯看樓層","floor:"],[detailMenu,"空間細節","detail:"]]){
+    const group=document.createElement("optgroup");
+    group.label=label;
+    for(const option of Array.from(source.options).slice(1)){
+        group.append(new Option(option.textContent,prefix+option.value));
+    }
+    fullscreenView.append(group);
+}
 function syncFullscreen(){
     const active=document.fullscreenElement===viewer||viewer.classList.contains("in-page-fullscreen");
-    fullscreenButton.textContent=active?"離開全螢幕":"全螢幕";
+    (active?canvas:fullscreenButton).focus({preventScroll:true});
     schedule();
 }
 function setInPageFullscreen(active){
@@ -4180,7 +4226,7 @@ function setInPageFullscreen(active){
     document.body.classList.toggle("page-has-fullscreen",active);
     syncFullscreen();
 }
-fullscreenButton.onclick=async()=>{
+async function toggleFullscreen(){
     if(document.fullscreenElement===viewer){
         await document.exitFullscreen();
         return;
@@ -4194,9 +4240,18 @@ fullscreenButton.onclick=async()=>{
     }catch{
         setInPageFullscreen(true);
     }
-    if(view==="walk")canvas.focus({preventScroll:true});
-};
+}
+fullscreenButton.onclick=$("fullscreen-exit").onclick=toggleFullscreen;
 document.addEventListener("fullscreenchange",syncFullscreen);
+fullscreenView.onchange=()=>{
+    const [key,value]=fullscreenView.value.split(":");
+    const menu=key==="floor"?$("orbit-floor"):key==="detail"?detailMenu:null;
+    if(menu){
+        menu.value=value;
+        menu.onchange();
+    }else $(key)?.click();
+    canvas.focus({preventScroll:true});
+};
 function setView(value){
     view=value;
     $("exterior").setAttribute("aria-pressed",view==="exterior");
@@ -4212,6 +4267,10 @@ function setView(value){
     $("plan").setAttribute("aria-pressed",view==="plan");
     $("upper-plan").setAttribute("aria-pressed",view==="upperPlan");
     $("third-plan").setAttribute("aria-pressed",view==="thirdPlan");
+    const detail=view==="preset"?data.cameras[preset].detailView:null;
+    fullscreenView.value=view==="preset"?(detail?"detail:"+detail:""):
+        view==="orbit"&&orbitFloor!==-1?"floor:"+orbitFloor:
+        viewButtons.find(button=>button.getAttribute("aria-pressed")==="true")?.id??"";
     $("walk-controls").hidden=view!=="walk";
     section.disabled=view==="walk"||showingExterior()||wholeInterior();
     if(view!=="walk")stopWalk();
@@ -4411,7 +4470,6 @@ document.addEventListener("keydown",e=>{
     if(e.key==="Escape"&&viewer.classList.contains("in-page-fullscreen")){
         e.preventDefault();
         setInPageFullscreen(false);
-        fullscreenButton.focus({preventScroll:true});
         return;
     }
     const key=walkKey(e);
@@ -4534,6 +4592,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=a9a47834dbdf9dc5" defer></script>
+    <script src="./check-version.js?v=554aa2b60a330b4e" defer></script>
 </body>
 </html>

@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="388bf29eda13d382">
+    <meta name="model-revision" content="07ca89af67cf4e38">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -455,6 +455,7 @@ function buildSecondFloor(data){
     const northFace=b=>b[4]<=-.15&&b[4]-b[1]<.045;
     const southFace=b=>b[1]>=4.95;
     const northFacadePaint=[163,168,166,0], lightFacadePaint=[221,220,213,0];
+    const northRenderFinish=[156,159,154,51];
     const entryPaint=[237,230,218,3];
     // The ground-floor trim has continuous rendered faces in the renovation.
     data.layers.groundTrim=data.layers.groundTrim.flatMap(b=>{
@@ -2579,7 +2580,7 @@ function buildSecondFloor(data){
         }
     }
     for(const key of ["sideSkin","upperSide","thirdStory","beforeOuterFacadeTiles"]){
-        refinish(key,([r],pat)=>pat===17&&r===163?[156,159,154,51]:null);
+        refinish(key,([r],pat)=>pat===17&&r===163?northRenderFinish:null);
     }
     for(const key of ["rearWing","upperRearWing"]){
         refinish(key,([r],pat)=>pat===18&&(r===129||r===137)?[141,92,78,47]:
@@ -2652,16 +2653,24 @@ function buildSecondFloor(data){
         box(beamKey,westOutside,-.08,beamSill,-.264,4.92,3.62,[221,220,213,0]);
 
         data.layers.firstFacadeWindows=data.layers.firstFacadeWindows.filter(b=>b[0]>=3.20);
-        for(const [side,lo,hi] of [["north",-.231,-.03],["south",4.835,5.036]]){
-            const sideBounds=[westInside-.002,lo-.015,3.20,hi+.015];
+        const sideWallEnd=3.20;
+        for(const [side,lo,hi,faceLo,faceHi,paint] of [
+            ["north",-.231,-.03,-.234,-.231,northRenderFinish],
+            ["south",4.835,5.036,5.036,5.037,lightFacadePaint]
+        ]){
+            const sideBounds=[westInside-.002,lo-.015,sideWallEnd,hi+.015];
             for(const key of [side,"outerWallFinish","groundTrim"]){
                 data.layers[key]=clearSlab(data.layers[key],sideBounds,-.228,3.60);
             }
-            box(side,westOutside,lo,-.218,sideEnd,hi,2.49,entryPaint);
+            const sideWindowSill=2.49;
+            box(side,westOutside,lo,-.218,sideEnd,hi,sideWindowSill,entryPaint);
             // Side windows are measured between the inside faces of the piers.
-            fixedWindow(side,"x",sideStart,sideEnd,(lo+hi)/2,2.49,beamSill,true);
-            box(beamKey,westOutside,lo,beamSill,3.2,hi,3.60,entryPaint);
-            box(side,sideEnd,lo,-.218,3.2,hi,beamSill,entryPaint);
+            fixedWindow(side,"x",sideStart,sideEnd,(lo+hi)/2,sideWindowSill,beamSill,true);
+            box(beamKey,westOutside,lo,beamSill,sideWallEnd,hi,3.60,entryPaint);
+            box(side,sideEnd,lo,-.218,sideWallEnd,hi,beamSill,entryPaint);
+            // Match each exterior elevation while keeping the interior plaster finish.
+            wallAt("x",westOutside,sideWallEnd,faceLo,faceHi,-.218,3.60,
+                [[sideStart,sideEnd,sideWindowSill,beamSill]],side,paint);
         }
 
         data.layers.roof=clearSlab(data.layers.roof,[westInside,-.03,dividerEnd,4.835],3.50,3.62);
@@ -2699,16 +2708,32 @@ function buildSecondFloor(data){
         const cabinetFront=sideEnd-.23, cabinetNorth=winLeft, cabinetSouth=winRight;
         const panel=.020, cabinetTop=winSill-panel, shelfBase=.055;
         const cabinetWood=[199,171,140,2];
-        // Four open bays face the outer hall.
+        // Four storage bays sit behind sliding doors on two tracks.
         const bayPitch=(cabinetSouth-cabinetNorth-panel)/4;
         for(let i=0;i<=4;i++){
             const start=cabinetNorth+i*bayPitch;
-            box(windowSeat,cabinetFront,start,0,sideEnd,start+panel,cabinetTop,cabinetWood);
+            const dividerFront=i===0||i===4?cabinetFront:cabinetFront+.052;
+            box(windowSeat,dividerFront,start,0,sideEnd,start+panel,cabinetTop,cabinetWood);
         }
         box(windowSeat,cabinetFront,cabinetNorth,cabinetTop,sideEnd,cabinetSouth,winSill,cabinetWood);
         box(windowSeat,sideEnd-panel,cabinetNorth+panel,0,sideEnd,cabinetSouth-panel,cabinetTop,cabinetWood);
         box(windowSeat,cabinetFront,cabinetNorth+panel,shelfBase-panel,sideEnd-panel,cabinetSouth-panel,shelfBase,cabinetWood);
         box(windowSeat,cabinetFront+.025,cabinetNorth+panel,0,sideEnd-panel,cabinetSouth-panel,shelfBase-panel,cabinetWood);
+        const trackStart=cabinetNorth+panel, trackEnd=cabinetSouth-panel;
+        const trackColor=[154,132,108,0], pullFinish=[102,88,72,0];
+        const doorBottom=shelfBase+.010, doorTop=cabinetTop-.008;
+        for(const height of [shelfBase,cabinetTop-.006]){
+            box(windowSeat,cabinetFront+.003,trackStart,height,cabinetFront+.050,trackEnd,height+.006,trackColor);
+        }
+        const doorPitch=(trackEnd-trackStart)/4;
+        for(let i=0;i<4;i++){
+            const front=cabinetFront+(i%2===0?.005:.029);
+            const left=trackStart+i*doorPitch+(i===0?.003:-.006);
+            const right=trackStart+(i+1)*doorPitch+(i===3?-.003:.006);
+            box(windowSeat,front,left,doorBottom,front+.017,right,doorTop,cabinetWood);
+            const pull=i%2===0?left+.042:right-.042;
+            box(windowSeat,front-.001,pull-.008,doorTop-.128,front,pull+.008,doorTop-.035,pullFinish);
+        }
         const cushionTop=winSill+.045;
         const cushion=rounded(cabinetFront+.003,cabinetNorth+.012,dividerEnd-.003,cabinetSouth-.012,.016,cushionTop);
         extrude(windowSeat,cushion,winSill,cushionTop,[183,171,155,4]);
@@ -2732,10 +2757,13 @@ function buildSecondFloor(data){
         // Clear the full-length bench at the north cabinet while retaining the west wall fit.
         const northCabinetEnd=fitHall(Math.max(...data.layers.northCab.map(b=>b[3])));
         const northCabinetScale=(cabinetFront-.01-westInside)/(northCabinetEnd-westInside);
+        const shoeCabinetWest=-.26, shoeCabinetEast=1.925, shoeBenchWest=2.235;
+        const shoeCabinetScale=(shoeBenchWest-.02-shoeCabinetWest)/(shoeCabinetEast-shoeCabinetWest);
         for(const key of ["northCab","southCab"]){
             const fitCabinet=key==="northCab"
                 ?x=>westInside+(fitHall(x)-westInside)*northCabinetScale
-                :fitHall;
+                :x=>fitHall(x>=shoeCabinetWest&&x<=shoeCabinetEast
+                    ?shoeCabinetWest+(x-shoeCabinetWest)*shoeCabinetScale:x);
             for(const b of data.layers[key])for(const i of [0,3])b[i]=fitCabinet(b[i]);
             data.polygons[key]=(data.polygons[key]??[]).map(([points,a,b,color,axis,pattern])=>{
                 if(axis==="x")return [points,fitCabinet(a),fitCabinet(b),color,axis,pattern];
@@ -4347,6 +4375,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=388bf29eda13d382" defer></script>
+    <script src="./check-version.js?v=07ca89af67cf4e38" defer></script>
 </body>
 </html>

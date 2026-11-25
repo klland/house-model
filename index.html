@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="2d099a96ba9d3de6">
+    <meta name="model-revision" content="08c8fbd8e81b940f">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -2691,9 +2691,7 @@ function buildSecondFloor(data){
         const keepOriginalDoor=data.layers.beforeDivider.filter(b=>b[1]>=3.46&&b[5]<=3.19);
         const pillarNorth=innerWindow[1], pillarSouth=innerDoor[0], pillarCenter=(pillarNorth+pillarSouth)/2;
         data.layers.livingEntryPosts=[];
-        box("livingEntryPosts",sideEnd,-.03,0,dividerEnd,.26,entryCeiling,entryPaint);
         box("livingEntryPosts",sideEnd,pillarNorth,0,dividerEnd,pillarSouth,entryCeiling,entryPaint);
-        box("livingEntryPosts",sideEnd,4.64,0,dividerEnd,4.835,entryCeiling,entryPaint);
         const trimColor=[215,207,195,0];
         for(const [key,finish] of [["livingEntryTiles",trimColor],["livingEntryTilesActual",originalPier]]){
             data.layers[key]=[];
@@ -2822,25 +2820,30 @@ function buildSecondFloor(data){
         const tileEdge=fitHall(extendedShoeCabinetEast), tileRadius=1.15;
         // The open coat bay shares the shoe cabinet's height and meets it at the bench.
         const bayWest=tileEdge, bayEast=fitHall(3.055), bayTop=2.46;
-        const bayFront=4.436, bayBack=4.835, endPanel=.022;
+        const bayFront=4.436, bayBack=4.835;
         const benchFront=4.404, benchTop=.455, cushionHeight=.045;
-        const benchWood=[188,163,134,2], backWood=[204,177,147,2], headerFinish=[237,233,223,0];
-        box(shoeCabinet,bayWest,4.515,0,bayEast,bayBack,.13,[145,122,100,2]);
-        box(shoeCabinet,bayWest,bayFront,.13,bayEast,bayBack,benchTop-.028,benchWood);
+        const cabinetBottom=.1824;
+        const benchWood=[188,163,134,2], backWood=[204,177,147,2];
+        // Match the shoe-cabinet face and bottom edge. Recess the base behind both faces.
+        box(shoeCabinet,bayWest+.035,4.70,0,bayEast-.035,bayBack,cabinetBottom,[145,122,100,2]);
+        box(shoeCabinet,bayWest,bayFront,cabinetBottom,bayEast,bayBack,benchTop-.028,benchWood);
         box(shoeCabinet,bayWest,benchFront,benchTop-.028,bayEast,bayBack,benchTop,benchWood);
         box(shoeCabinet,bayWest,bayBack-.019,benchTop,bayEast,bayBack,bayTop,backWood);
-        box(shoeCabinet,bayEast-endPanel,bayFront,benchTop,bayEast,bayBack,bayTop,benchWood);
-        box(shoeCabinet,bayWest,bayFront,bayTop-.028,bayEast,bayBack,bayTop,headerFinish);
-        const seat=rounded(bayWest+.012,benchFront+.012,bayEast-endPanel-.010,bayBack-.026,.029,benchTop+cushionHeight);
+        const seat=rounded(bayWest+.012,benchFront+.012,bayEast-.012,bayBack-.026,.029,benchTop+cushionHeight);
         extrude(shoeCabinet,seat,benchTop,benchTop+cushionHeight,[193,177,153,4]);
 
-        const coatCenter=(bayWest+bayEast-endPanel)/2, coatHooks=[coatCenter-.19,coatCenter,coatCenter+.19];
-        const hookRailY=bayBack-.036, hookBase=1.84, hookMetal=[89,74,63,0];
-        box(shoeCabinet,bayWest+.046,hookRailY,hookBase-.038,
-            bayEast-endPanel-.046,bayBack-.019,hookBase+.038,benchWood);
-        for(const x of coatHooks){
-            beam(shoeCabinet,[x,hookRailY,hookBase],[x,hookRailY-.063,hookBase],.014,.014,hookMetal);
-            beam(shoeCabinet,[x,hookRailY-.059,hookBase],[x,hookRailY-.071,hookBase+.027],.014,.014,hookMetal);
+        const coatCenter=(bayWest+bayEast)/2;
+        const hookOffsets=[-.19,-.095,0,.095,.19];
+        const hookHeights=[bayTop-.10,1.44];
+        const hookRailY=bayBack-.036, hookMetal=[89,74,63,0];
+        for(const height of hookHeights){
+            box(shoeCabinet,bayWest+.046,hookRailY,height-.038,
+                bayEast-.046,bayBack-.019,height+.038,benchWood);
+            for(const offset of hookOffsets){
+                const x=coatCenter+offset;
+                beam(shoeCabinet,[x,hookRailY,height],[x,hookRailY-.063,height],.014,.014,hookMetal);
+                beam(shoeCabinet,[x,hookRailY-.059,height],[x,hookRailY-.071,height+.027],.014,.014,hookMetal);
+            }
         }
         const isInsideHall=([points])=>points.some(([x])=>x>shoeCabinetWest);
         const [border,grout]=data.polygons.entry.filter(part=>part[1]<.0014&&isInsideHall(part));
@@ -4517,6 +4520,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=2d099a96ba9d3de6" defer></script>
+    <script src="./check-version.js?v=08c8fbd8e81b940f" defer></script>
 </body>
 </html>

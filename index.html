@@ -166,7 +166,7 @@ canvas.moving{cursor:move}
 .catalog-table :is(th,td):not(:first-child){width:16%;text-align:right;white-space:nowrap}
 .catalog-note{display:block;color:var(--muted);font-weight:400;font-size:11px;line-height:1.45}
 </style>
-    <meta name="model-revision" content="7403e17cbb24117e">
+    <meta name="model-revision" content="72b3169e9e138519">
 </head>
 <body>
 <header class="shell-header">
@@ -2873,11 +2873,11 @@ function buildSecondFloor(data){
     function applyMeasuredEntry(){
         const entryCeiling=3.50, beamSill=3.17;
         const westOutside=measuredWestOutside, westInside=-.41, wallPlane=(westOutside+westInside)/2;
-        const glazingShortSide=.50;
+        const sideWindowHeight=.50, westGlazingShortSide=.45;
         const northJamb=.32, southJamb=4.52, doorWidth=1.15;
-        const doorLeft=southJamb-doorWidth, sideLightLeft=doorLeft-glazingShortSide;
+        const doorLeft=southJamb-doorWidth, sideLightLeft=doorLeft-westGlazingShortSide;
         const doorHead=2.20, sideStart=measuredSideStart, sideEnd=measuredSideEnd;
-        const sideWindowSill=beamSill-glazingShortSide;
+        const sideWindowSill=beamSill-sideWindowHeight;
         const sideWindow=[sideStart,sideEnd,sideWindowSill,beamSill];
         const dividerEnd=sideEnd+.181;
         const glass=[190,210,204,5], gray=[62,64,64,0];
@@ -2891,7 +2891,7 @@ function buildSecondFloor(data){
         // The 420 cm opening is measured between the two front piers.
         const horizontalWindowWidth=1.30, horizontalWindowSill=1.50;
         const horizontalWindow=[northJamb,northJamb+horizontalWindowWidth,
-            horizontalWindowSill,horizontalWindowSill+glazingShortSide];
+            horizontalWindowSill,horizontalWindowSill+westGlazingShortSide];
         const frontOpenings=[horizontalWindow,[sideLightLeft,doorLeft,0,doorHead],
             [doorLeft,southJamb,0,doorHead]];
         data.layers.west=[];
@@ -3093,16 +3093,26 @@ function buildSecondFloor(data){
                 ?x=>westInside+(fitHall(x)-westInside)*northCabinetScale
                 :x=>fitHall(x>=shoeCabinetWest&&x<=shoeCabinetEast
                     ?shoeCabinetWest+(x-shoeCabinetWest)*shoeCabinetScale:x);
-            for(const b of data.layers[key])for(const i of [0,3])b[i]=fitCabinet(b[i]);
+            const originalTop=Math.max(...data.layers[key].map(b=>b[5]));
+            const topLift=sideWindowSill-originalTop;
+            // Shift the top panels together to preserve their thickness and the lower shelf positions.
+            const fitCabinetTop=z=>z>=originalTop-.12?z+topLift:z;
+            for(const b of data.layers[key]){
+                for(const i of [0,3])b[i]=fitCabinet(b[i]);
+                for(const i of [2,5])b[i]=fitCabinetTop(b[i]);
+            }
             data.polygons[key]=(data.polygons[key]??[]).map(([points,a,b,color,axis,pattern])=>{
-                if(axis==="x")return [points,fitCabinet(a),fitCabinet(b),color,axis,pattern];
-                return [points.map(([x,...rest])=>[fitCabinet(x),...rest]),a,b,color,axis,pattern];
+                if(axis==="x")return [points.map(([y,z])=>[y,fitCabinetTop(z)]),
+                    fitCabinet(a),fitCabinet(b),color,axis,pattern];
+                const outline=points.map(([x,...rest])=>[fitCabinet(x),...rest]);
+                if(axis==="z")return [outline,fitCabinetTop(a),fitCabinetTop(b),color,axis,pattern];
+                return [outline,a,b,color,axis,pattern];
             });
         }
         // Round the corner back toward the cabinet, keeping the end of the tile aligned with it.
         const tileEdge=fitHall(extendedShoeCabinetEast), tileRadius=1.15;
         // The open coat bay shares the shoe cabinet's height and meets it at the bench.
-        const bayWest=tileEdge, bayEast=fitHall(3.055), bayTop=2.46;
+        const bayWest=tileEdge, bayEast=fitHall(3.055), bayTop=sideWindowSill;
         const bayFront=4.436, bayBack=4.835;
         const benchFront=4.404, benchTop=.455, cushionHeight=.045;
         const cabinetBottom=.1824;
@@ -3117,7 +3127,7 @@ function buildSecondFloor(data){
 
         const coatCenter=(bayWest+bayEast)/2;
         const hookOffsets=[-.19,-.095,0,.095,.19];
-        const hookHeights=[bayTop-.10,1.44];
+        const hookHeights=[2.36,1.44];
         const hookRailY=bayBack-.036, hookMetal=[89,74,63,0];
         for(const height of hookHeights){
             box(shoeCabinet,bayWest+.046,hookRailY,height-.038,
@@ -3190,11 +3200,11 @@ function buildSecondFloor(data){
             {name:"玄關｜掛衣區與穿鞋座",detailView:"coat",eye:[bayWest+.15,2.75,1.56],target:[bayWest-.15,4.66,1.24],fov:106}
         );
         Object.assign(data.designDimensions,{
-            westWindow:{sillAboveFinishedFloor:horizontalWindowSill,width:horizontalWindowWidth,height:glazingShortSide},
-            westDoor:{width:doorWidth,height:doorHead,panelCount:1,fixedSideWidth:glazingShortSide,transomHeight:0},
+            westWindow:{sillAboveFinishedFloor:horizontalWindowSill,width:horizontalWindowWidth,height:westGlazingShortSide},
+            westDoor:{width:doorWidth,height:doorHead,panelCount:1,fixedSideWidth:westGlazingShortSide,transomHeight:0},
             entryTileWidthAtDoor:doorWidth,
             measuredEntry:{westWidth:4.20,sideOpening:measuredSideOpening,ceilingHeight:entryCeiling,
-                beamHeight:beamSill,sideWindowHeight:glazingShortSide,sideWindowSill,sideWindowHead:beamSill,
+                beamHeight:beamSill,sideWindowHeight,sideWindowSill,sideWindowHead:beamSill,
                 livingWallX:sideEnd,livingWallEnd:dividerEnd}
         });
     }
@@ -3370,7 +3380,7 @@ const roomBounds={
     客廳:[data.designDimensions.measuredEntry.livingWallEnd+.08,7.94,.06,4.74],廚房:[14.03,17.97,.033,4.77],
     二樓書房:upstairs.studyBounds
 };
-const names={...data.exteriorLayers,...data.rearInterior,...interiorVariants.names,...upstairs.groups,...third.groups,floor:"連續木地板",entryBeams:"外廳梁",roof:"屋頂",hall:"後房通道",north:"北側牆與窗",south:"南側牆與窗",east:"東牆",west:"西面長窗與正門",divider:"外廳與客廳隔牆",northCab:"北側到頂櫃",southCab:"南側鞋櫃、掛衣區與固定穿鞋座",tv:"東牆電視櫃",ac:"冷氣",lamps:"外廳燈具",livingMainLight:"客廳圓形吸頂主燈",livingAccentLights:"客廳四盞防眩輔燈",livingTvLight:"電視背光燈帶",yard:"室外鋪面與植栽",entry:"圓弧六角磚玄關"};
+const names={...data.exteriorLayers,...data.rearInterior,...interiorVariants.names,...upstairs.groups,...third.groups,floor:"連續木地板",entryBeams:"外廳梁",roof:"屋頂",hall:"後房通道",north:"北側牆與窗",south:"南側牆與窗",east:"東牆",west:"西面長窗與正門",divider:"外廳與客廳隔牆",northCab:"北側窗下置物櫃",southCab:"南側鞋櫃、掛衣區與固定穿鞋座",tv:"東牆電視櫃",ac:"冷氣",lamps:"外廳燈具",livingMainLight:"客廳圓形吸頂主燈",livingAccentLights:"客廳四盞防眩輔燈",livingTvLight:"電視背光燈帶",yard:"室外鋪面與植栽",entry:"圓弧六角磚玄關"};
 names.firstFacadeWindows="一樓外牆窗戶";
 const existingWallSource={beforeNorth:"north",beforeSouth:"south",beforeFacadeWindows:"firstFacadeWindows"};
 for(const [key,source] of Object.entries(existingWallSource))names[key]=names[source];
@@ -3426,7 +3436,7 @@ const groups=Object.entries(data.layers).map(([key,boxes])=>{
 });
 const editable=groups.filter(g=>g.info);
 function populateSizeCatalog(){
-    const {measuredEntry:entry,outerHallWall}=data.designDimensions;
+    const {measuredEntry:entry,outerHallWall,westWindow,westDoor}=data.designDimensions;
     const layer=key=>data.layers[key];
     const groundZone=name=>data.rearLayout.zones.find(zone=>zone.name===name).bounds;
     const outerCeiling=layer("roof").find(b=>b[0]===outerHallWall.westInteriorX&&b[2]===entry.ceilingHeight);
@@ -3437,7 +3447,9 @@ function populateSizeCatalog(){
     recordRoom("一樓","外廳（改造前）",[frontLeaf[3],northLeaf[4],entry.livingWallX,southLeaf[1]],
         entry.ceilingHeight,"依鐵捲門內側取尺寸，柱間較窄");
     recordRoom("一樓","外廳（改造後）",[outerHallWall.westInteriorX,outerCeiling[1],entry.livingWallX,outerCeiling[4]],
-        entry.ceilingHeight,"梁下 "+entry.beamHeight.toFixed(2)+" m，四處固定玻璃的窗框短邊各 "+entry.sideWindowHeight.toFixed(2)+" m");
+        entry.ceilingHeight,"梁下 "+entry.beamHeight.toFixed(2)+" m，南北側窗高 "+
+        entry.sideWindowHeight.toFixed(2)+" m，西面橫窗高 "+westWindow.height.toFixed(2)+
+        " m，門旁直窗寬 "+westDoor.fixedSideWidth.toFixed(2)+" m");
     recordRoom("一樓","客廳",[entry.livingWallEnd,innerCeiling[1],8,innerCeiling[4]],innerCeiling[2]);
     const rearCeilings=layer("rearCeilings");
     const reserve=layer("roomReserve")[0];
@@ -3467,8 +3479,8 @@ function populateSizeCatalog(){
             interiorVariants.after.includes(key)?"改造後":"");
     }
     for(const [floor,room,name,key,note] of [
-        ["一樓","外廳","北側到頂櫃","northCab","改造後"],
-        ["一樓","外廳","南側鞋櫃、掛衣區與穿鞋座","southCab","改造後・整組"],
+        ["一樓","外廳","北側窗下置物櫃","northCab","櫃頂齊窗台"],
+        ["一樓","外廳","南側鞋櫃、掛衣區與穿鞋座","southCab","整組，櫃頂齊窗台"],
         ["一樓","外廳","柱面全身鏡","livingEntryMirror","改造後"],
         ["一樓","客廳","電視櫃及兩側玻璃高櫃","tv","整組"],
         ["一樓","客廳","柱面木質洞洞板","livingEntryPegboard","改造後"],
@@ -4986,6 +4998,6 @@ applyFurnitureLayout(publishedLayout);
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=7403e17cbb24117e" defer></script>
+    <script src="./check-version.js?v=72b3169e9e138519" defer></script>
 </body>
 </html>

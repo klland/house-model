@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="7009bad503c06e45">
+    <meta name="model-revision" content="a9a47834dbdf9dc5">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -171,7 +171,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
         </section>
     </aside>
 </main>
-<p class="note">改造方案的新牆外側與原柱面切齊，入口柱往外廳凸出約 15 公分。外廳側的原磁磚保留磚縫並刷成牆面同色。客廳側舊門窗周邊為平整漆面，上方橫梁向客廳凸出。</p>
+<p class="note">改造方案的新牆外側與原柱面切齊，入口柱往外廳凸出約 15 公分。外廳的牆磚與玄關六角地磚統一為淺米灰色，保留磚縫。客廳採木地板，牆面、梁、柱及踢腳板皆為平整漆面。</p>
 </div>
 <iframe id="warehouse-view" title="倉庫現況 3D 模型" hidden></iframe>
 <script>
@@ -2616,6 +2616,10 @@ function buildSecondFloor(data){
         const doorHead=2.20, sideStart=westOutside+.48, sideEnd=sideStart+2.50;
         const dividerEnd=sideEnd+.181;
         const glass=[190,210,204,5], gray=[62,64,64,0];
+        const hallTileColor=[221,220,213], hallTile=[...hallTileColor,52];
+        data.layers.afterSkirting=data.layers.afterSkirting.map(b=>
+            b[0]>=dividerEnd&&b[0]<8.14&&b[9]===27
+                ?[...b.slice(0,6),...entryPaint,b[10]]:b);
         const fixedWindow=(key,axis,a,b,plane,sill,head,divided=false)=>joinery(
             axis,a,b,plane,sill,head,{panels:[[sill+.043,head-.043,glass,divided]]},true,key,gray);
 
@@ -2652,7 +2656,7 @@ function buildSecondFloor(data){
             frontOpenings,"outerWallFinish",lightFacadePaint);
         data.layers.entryPosts=[];
         for(const [lo,hi] of [[northJamb-.40,northJamb],[southJamb,southJamb+.40]]){
-            box("entryPosts",westOutside,lo,-.22,sideStart,hi,entryCeiling,[221,220,213,52]);
+            box("entryPosts",westOutside,lo,-.22,sideStart,hi,entryCeiling,hallTile);
         }
         // Reuse the original front beam position and show the 33 cm drop below the ceiling.
         const beamKey="entryBeams";
@@ -2692,10 +2696,7 @@ function buildSecondFloor(data){
         const pillarNorth=innerWindow[1], pillarSouth=innerDoor[0], pillarCenter=(pillarNorth+pillarSouth)/2;
         data.layers.livingEntryPosts=[];
         box("livingEntryPosts",sideEnd,pillarNorth,0,dividerEnd,pillarSouth,entryCeiling,entryPaint);
-        const trimColor=[215,207,195,52];
-        const beamTile=[...entryPaint.slice(0,3),52];
-        data.renovationPaint.livingEntryPosts={[paintKeys(entryPaint)]:trimColor};
-        for(const [key,finish] of [["livingEntryTiles",trimColor],["livingEntryTilesActual",originalPier]]){
+        for(const [key,finish] of [["livingEntryTiles",hallTile],["livingEntryTilesActual",originalPier]]){
             data.layers[key]=[];
             for(const b of data.layers.livingEntryPosts)box(key,b[0]-.004,b[1],b[2],b[0],b[4],b[5],finish);
         }
@@ -2794,11 +2795,15 @@ function buildSecondFloor(data){
         }
         data.layers.livingEntryBeam=[];
         box("livingEntryBeam",sideEnd,-.03,beamSill,dividerEnd+.09,4.835,entryCeiling,entryPaint);
-        data.renovationPaint.livingEntryBeam={[paintKeys(entryPaint)]:beamTile};
-        // Replace the individual strips with flush tile faces from the window heads up.
-        data.layers.entryTileBands=data.layers.entryTileBands.filter(b=>b[1]>-.03&&b[4]<4.835);
+        // End the cladding at the outer-hall face without wrapping the beam into the living room.
+        const tileDepth=.004, frontBeamInside=-.264;
+        box("livingEntryTiles",sideEnd-tileDepth,-.03,beamSill,sideEnd,4.835,entryCeiling,hallTile);
+        data.layers.entryTileBands=[];
+        box("entryTileBands",frontBeamInside,-.03,beamSill,
+            frontBeamInside+tileDepth,4.835,entryCeiling,hallTile);
         for(const [lo,hi] of [[-.03,-.027],[4.832,4.835]]){
-            box("entryTileBands",-.264,lo,beamSill,sideWallEnd,hi,3.60,beamTile);
+            box("entryTileBands",frontBeamInside+tileDepth,lo,beamSill,
+                sideEnd-tileDepth,hi,entryCeiling,hallTile);
         }
 
         const fitHall=x=>westInside+(x-westInside)*(sideEnd-westInside)/(oldDivider-westInside);
@@ -2886,7 +2891,9 @@ function buildSecondFloor(data){
             if(!isInsideHall(prism))return [prism];
             const points=prism===border?roundTileBorder(prism[0]):
                 prism===grout?tileOutline:cutHexagon(prism[0]);
-            return points.length>=3?[[points,...prism.slice(1)]]:[];
+            if(points.length<3)return [];
+            const color=prism===border||prism===grout?prism[3]:hallTileColor;
+            return [[points,prism[1],prism[2],color,...prism.slice(4)]];
         });
         const shiftHall=(key,dx,dz=0)=>{
             for(const b of data.layers[key]){
@@ -3322,7 +3329,7 @@ void main(){
     vec2 a=clamp(fwidth(coord)*.55,vec2(.004),vec2(.25));
     vec2 lines=vec2(1.)-smoothstep(vec2(.022,.010)-a,vec2(.022,.010)+a,seam);
     float m=max(lines.x,lines.y);
-    color*=1.+(noise(floor(coord))-.5)*(paintedPier?.012:.047);
+    if(!paintedPier)color*=1.+(noise(floor(coord))-.5)*.047;
     vec3 grout=whiteBrickJoint?vec3(.94,.94,.92):color*(paintedPier?.86:pat==12.?.60:pat==20.?.74:.88);
     color=mix(color,grout,m*(whiteBrickJoint?.96:.90));
     if(pat==20.){
@@ -4527,6 +4534,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=7009bad503c06e45" defer></script>
+    <script src="./check-version.js?v=a9a47834dbdf9dc5" defer></script>
 </body>
 </html>

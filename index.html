@@ -166,7 +166,7 @@ canvas.moving{cursor:move}
 .catalog-table :is(th,td):not(:first-child){width:16%;text-align:right;white-space:nowrap}
 .catalog-note{display:block;color:var(--muted);font-weight:400;font-size:11px;line-height:1.45}
 </style>
-    <meta name="model-revision" content="744f9bfc02f008f2">
+    <meta name="model-revision" content="aef4430371409030">
 </head>
 <body>
 <header class="shell-header">
@@ -2876,11 +2876,8 @@ function buildSecondFloor(data){
         const northJamb=.32, southJamb=4.52, doorWidth=1.15, sideLightWidth=.40;
         const doorLeft=southJamb-doorWidth, sideLightLeft=doorLeft-sideLightWidth;
         const doorHead=2.20, sideStart=measuredSideStart, sideEnd=measuredSideEnd;
-        const sideWindowWidth=.40, sideWindowSill=2.49;
-        const sideWindowCenter=(sideStart+sideEnd)/2;
-        const sideWindowStart=sideWindowCenter-sideWindowWidth/2;
-        const sideWindowEnd=sideWindowCenter+sideWindowWidth/2;
-        const sideWindow=[sideWindowStart,sideWindowEnd,sideWindowSill,beamSill];
+        const sideWindowHeight=.40, sideWindowSill=beamSill-sideWindowHeight;
+        const sideWindow=[sideStart,sideEnd,sideWindowSill,beamSill];
         const dividerEnd=sideEnd+.181;
         const glass=[190,210,204,5], gray=[62,64,64,0];
         const hallTile=[...entryPaint.slice(0,3),52];
@@ -2942,8 +2939,7 @@ function buildSecondFloor(data){
                 data.layers[key]=clearSlab(data.layers[key],sideBounds,-.228,3.60);
             }
             box(side,westOutside,lo,-.218,sideEnd,hi,sideWindowSill,entryPaint);
-            wallAt("x",sideStart,sideEnd,lo,hi,sideWindowSill,beamSill,[sideWindow],side,entryPaint);
-            fixedWindow(side,"x",sideWindowStart,sideWindowEnd,(lo+hi)/2,sideWindowSill,beamSill);
+            fixedWindow(side,"x",sideStart,sideEnd,(lo+hi)/2,sideWindowSill,beamSill);
             box(beamKey,westOutside,lo,beamSill,sideWallEnd,hi,3.60,entryPaint);
             box(side,sideEnd,lo,-.218,sideWallEnd,hi,beamSill,entryPaint);
             // Match each exterior elevation while keeping the interior plaster finish.
@@ -3194,7 +3190,7 @@ function buildSecondFloor(data){
             westDoor:{width:doorWidth,height:doorHead,panelCount:1,fixedSideWidth:sideLightWidth,transomHeight:0},
             entryTileWidthAtDoor:doorWidth,
             measuredEntry:{westWidth:4.20,sideOpening:measuredSideOpening,ceilingHeight:entryCeiling,
-                beamHeight:beamSill,sideWindowWidth,sideWindowSill,sideWindowHead:beamSill,
+                beamHeight:beamSill,sideWindowHeight,sideWindowSill,sideWindowHead:beamSill,
                 livingWallX:sideEnd,livingWallEnd:dividerEnd}
         });
     }
@@ -3437,7 +3433,7 @@ function populateSizeCatalog(){
     recordRoom("一樓","外廳（改造前）",[frontLeaf[3],northLeaf[4],entry.livingWallX,southLeaf[1]],
         entry.ceilingHeight,"依鐵捲門內側取尺寸，柱間較窄");
     recordRoom("一樓","外廳（改造後）",[outerHallWall.westInteriorX,outerCeiling[1],entry.livingWallX,outerCeiling[4]],
-        entry.ceilingHeight,"梁下 "+entry.beamHeight.toFixed(2)+" m，南、北側固定窗各寬 "+entry.sideWindowWidth.toFixed(2)+" m");
+        entry.ceilingHeight,"梁下 "+entry.beamHeight.toFixed(2)+" m，南、北側固定長窗各高 "+entry.sideWindowHeight.toFixed(2)+" m");
     recordRoom("一樓","客廳",[entry.livingWallEnd,innerCeiling[1],8,innerCeiling[4]],innerCeiling[2]);
     const rearCeilings=layer("rearCeilings");
     const reserve=layer("roomReserve")[0];
@@ -4986,6 +4982,6 @@ applyFurnitureLayout(publishedLayout);
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=744f9bfc02f008f2" defer></script>
+    <script src="./check-version.js?v=aef4430371409030" defer></script>
 </body>
 </html>

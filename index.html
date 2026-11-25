@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="878a8b89605bc3f2">
+    <meta name="model-revision" content="2d099a96ba9d3de6">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -99,10 +99,11 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
                 <option value="design">改造後</option>
                 <option value="actual">改造前</option>
             </select>
-            <select id="pillar-view" aria-label="查看柱面設計">
-                <option value="">查看柱面</option>
+            <select id="detail-view" aria-label="查看空間細節">
+                <option value="">查看細節</option>
                 <option value="mirror">外廳｜全身鏡</option>
                 <option value="pegboard">客廳｜掛板</option>
+                <option value="coat">玄關｜掛衣區與穿鞋座</option>
             </select>
             <button type="button" id="front-shutter-toggle" hidden>升起正面捲門</button>
             <button type="button" id="fullscreen" aria-controls="viewer">全螢幕</button>
@@ -2802,6 +2803,10 @@ function buildSecondFloor(data){
         const shoeCabinetWest=-.26, shoeCabinetEast=1.925, shoeBenchWest=2.235;
         const extendedShoeCabinetEast=shoeBenchWest-.02;
         const shoeCabinetScale=(extendedShoeCabinetEast-shoeCabinetWest)/(shoeCabinetEast-shoeCabinetWest);
+        const shoeCabinet="southCab";
+        data.layers[shoeCabinet]=data.layers[shoeCabinet].filter(b=>b[0]<=shoeCabinetEast);
+        data.polygons[shoeCabinet]=data.polygons[shoeCabinet].filter(([points])=>
+            points.every(([x])=>x<=shoeCabinetEast));
         for(const key of ["northCab","southCab"]){
             const fitCabinet=key==="northCab"
                 ?x=>westInside+(fitHall(x)-westInside)*northCabinetScale
@@ -2815,6 +2820,28 @@ function buildSecondFloor(data){
         }
         // Round the corner back toward the cabinet, keeping the end of the tile aligned with it.
         const tileEdge=fitHall(extendedShoeCabinetEast), tileRadius=1.15;
+        // The open coat bay shares the shoe cabinet's height and meets it at the bench.
+        const bayWest=tileEdge, bayEast=fitHall(3.055), bayTop=2.46;
+        const bayFront=4.436, bayBack=4.835, endPanel=.022;
+        const benchFront=4.404, benchTop=.455, cushionHeight=.045;
+        const benchWood=[188,163,134,2], backWood=[204,177,147,2], headerFinish=[237,233,223,0];
+        box(shoeCabinet,bayWest,4.515,0,bayEast,bayBack,.13,[145,122,100,2]);
+        box(shoeCabinet,bayWest,bayFront,.13,bayEast,bayBack,benchTop-.028,benchWood);
+        box(shoeCabinet,bayWest,benchFront,benchTop-.028,bayEast,bayBack,benchTop,benchWood);
+        box(shoeCabinet,bayWest,bayBack-.019,benchTop,bayEast,bayBack,bayTop,backWood);
+        box(shoeCabinet,bayEast-endPanel,bayFront,benchTop,bayEast,bayBack,bayTop,benchWood);
+        box(shoeCabinet,bayWest,bayFront,bayTop-.028,bayEast,bayBack,bayTop,headerFinish);
+        const seat=rounded(bayWest+.012,benchFront+.012,bayEast-endPanel-.010,bayBack-.026,.029,benchTop+cushionHeight);
+        extrude(shoeCabinet,seat,benchTop,benchTop+cushionHeight,[193,177,153,4]);
+
+        const coatCenter=(bayWest+bayEast-endPanel)/2, coatHooks=[coatCenter-.19,coatCenter,coatCenter+.19];
+        const hookRailY=bayBack-.036, hookBase=1.84, hookMetal=[89,74,63,0];
+        box(shoeCabinet,bayWest+.046,hookRailY,hookBase-.038,
+            bayEast-endPanel-.046,bayBack-.019,hookBase+.038,benchWood);
+        for(const x of coatHooks){
+            beam(shoeCabinet,[x,hookRailY,hookBase],[x,hookRailY-.063,hookBase],.014,.014,hookMetal);
+            beam(shoeCabinet,[x,hookRailY-.059,hookBase],[x,hookRailY-.071,hookBase+.027],.014,.014,hookMetal);
+        }
         const isInsideHall=([points])=>points.some(([x])=>x>shoeCabinetWest);
         const [border,grout]=data.polygons.entry.filter(part=>part[1]<.0014&&isInsideHall(part));
         const cx=tileEdge-tileRadius, cy=border[0][0][1]+tileRadius;
@@ -2872,8 +2899,9 @@ function buildSecondFloor(data){
             if(camera.target[0]>=-.41&&camera.target[0]<=3.27)camera.target[0]=fitHall(camera.target[0]);
         }
         data.cameras.push(
-            {name:"外廳｜柱面全身鏡",pillarView:"mirror",eye:[sideEnd-1.84,3.80,1.55],target:[sideEnd,pillarCenter,.94],fov:94},
-            {name:"客廳｜柱面掛板",pillarView:"pegboard",eye:[dividerEnd+1.25,3.96,1.65],target:[dividerEnd,pillarCenter,boardBottom+boardHeight/2],fov:65}
+            {name:"外廳｜柱面全身鏡",detailView:"mirror",eye:[sideEnd-1.84,3.80,1.55],target:[sideEnd,pillarCenter,.94],fov:94},
+            {name:"客廳｜柱面掛板",detailView:"pegboard",eye:[dividerEnd+1.25,3.96,1.65],target:[dividerEnd,pillarCenter,boardBottom+boardHeight/2],fov:65},
+            {name:"玄關｜掛衣區與穿鞋座",detailView:"coat",eye:[bayWest+.15,2.75,1.56],target:[bayWest-.15,4.66,1.24],fov:106}
         );
         Object.assign(data.designDimensions,{
             westWindow:{sillAboveFinishedFloor:1.50,width:1.30,height:.40},
@@ -3020,7 +3048,7 @@ $("inner-label").querySelector("span").textContent="4.80 × "+data.designDimensi
 const canvas=$("scene"), stage=$("stage"), section=$("section"), objectMenu=$("object");
 const lightMenu=$("living-light-mode"), outerLightMenu=$("outer-light-mode");
 const exteriorMenu=$("exterior-version");
-const pillarMenu=$("pillar-view");
+const detailMenu=$("detail-view");
 const exteriorVariants=data.exteriorVariants, interiorVariants=data.interiorVariants;
 const plannedEntryLayers=new Set(["west","northCab","southCab","lamps","entryPosts","entryPostTiles","entryTileBands","livingEntryTiles"]);
 const retainedPostLayers=["entryPosts","livingEntryPosts"];
@@ -3056,7 +3084,7 @@ const roomBounds={
     客廳:[data.designDimensions.measuredEntry.livingWallEnd+.08,7.94,.06,4.74],廚房:[14.03,17.97,.033,4.77],
     二樓書房:upstairs.studyBounds
 };
-const names={...data.exteriorLayers,...data.rearInterior,...interiorVariants.names,...upstairs.groups,...third.groups,floor:"連續木地板",entryBeams:"外廳梁",roof:"屋頂",hall:"後房通道",north:"北側牆與窗",south:"南側牆與窗",east:"東牆",west:"西面長窗與正門",divider:"外廳與客廳隔牆",northCab:"北側到頂櫃",southCab:"南側鞋櫃與換鞋座",tv:"東牆電視櫃",ac:"冷氣",lamps:"外廳燈具",livingMainLight:"客廳圓形吸頂主燈",livingAccentLights:"客廳四盞防眩輔燈",livingTvLight:"電視背光燈帶",yard:"室外鋪面與植栽",entry:"圓弧六角磚玄關"};
+const names={...data.exteriorLayers,...data.rearInterior,...interiorVariants.names,...upstairs.groups,...third.groups,floor:"連續木地板",entryBeams:"外廳梁",roof:"屋頂",hall:"後房通道",north:"北側牆與窗",south:"南側牆與窗",east:"東牆",west:"西面長窗與正門",divider:"外廳與客廳隔牆",northCab:"北側到頂櫃",southCab:"南側鞋櫃、掛衣區與固定穿鞋座",tv:"東牆電視櫃",ac:"冷氣",lamps:"外廳燈具",livingMainLight:"客廳圓形吸頂主燈",livingAccentLights:"客廳四盞防眩輔燈",livingTvLight:"電視背光燈帶",yard:"室外鋪面與植栽",entry:"圓弧六角磚玄關"};
 names.firstFacadeWindows="一樓外牆窗戶";
 const existingWallSource={beforeNorth:"north",beforeSouth:"south",beforeFacadeWindows:"firstFacadeWindows"};
 for(const [key,source] of Object.entries(existingWallSource))names[key]=names[source];
@@ -3908,8 +3936,8 @@ function updateEditing(){
 }
 function updateMode(){
     lightMenu.disabled=outerLightMenu.disabled=exteriorMenu.value==="actual";
-    pillarMenu.hidden=exteriorMenu.value==="actual";
-    pillarMenu.value=view==="preset"?(data.cameras[preset].pillarView??""):"";
+    detailMenu.hidden=exteriorMenu.value==="actual";
+    detailMenu.value=view==="preset"?(data.cameras[preset].detailView??""):"";
     $("look").setAttribute("aria-pressed",mode==="look");
     $("move").setAttribute("aria-pressed",mode==="move");
     canvas.classList.toggle("moving",mode==="move");
@@ -4237,9 +4265,9 @@ exteriorMenu.onchange=()=>{
     updateViewLabel();
     updateMode();
 };
-pillarMenu.onchange=()=>{
-    if(!pillarMenu.value)return;
-    selectPreset(data.cameras.findIndex(camera=>camera.pillarView===pillarMenu.value));
+detailMenu.onchange=()=>{
+    if(!detailMenu.value)return;
+    selectPreset(data.cameras.findIndex(camera=>camera.detailView===detailMenu.value));
 };
 lightMenu.onchange=()=>{
     lightMode=lightMenu.value;
@@ -4489,6 +4517,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=878a8b89605bc3f2" defer></script>
+    <script src="./check-version.js?v=2d099a96ba9d3de6" defer></script>
 </body>
 </html>

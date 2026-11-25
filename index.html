@@ -62,7 +62,7 @@ canvas.grabbing{cursor:grabbing}canvas.moving{cursor:move}
 .viewer:is(:fullscreen,.in-page-fullscreen) .stage{flex:1;min-height:0;height:auto}
 .viewer:is(:fullscreen,.in-page-fullscreen) .caption{display:none}
 </style>
-    <meta name="model-revision" content="08c8fbd8e81b940f">
+    <meta name="model-revision" content="7009bad503c06e45">
 </head>
 <body>
 <nav class="space-nav" aria-label="切換 3D 模型">
@@ -2692,7 +2692,9 @@ function buildSecondFloor(data){
         const pillarNorth=innerWindow[1], pillarSouth=innerDoor[0], pillarCenter=(pillarNorth+pillarSouth)/2;
         data.layers.livingEntryPosts=[];
         box("livingEntryPosts",sideEnd,pillarNorth,0,dividerEnd,pillarSouth,entryCeiling,entryPaint);
-        const trimColor=[215,207,195,0];
+        const trimColor=[215,207,195,52];
+        const beamTile=[...entryPaint.slice(0,3),52];
+        data.renovationPaint.livingEntryPosts={[paintKeys(entryPaint)]:trimColor};
         for(const [key,finish] of [["livingEntryTiles",trimColor],["livingEntryTilesActual",originalPier]]){
             data.layers[key]=[];
             for(const b of data.layers.livingEntryPosts)box(key,b[0]-.004,b[1],b[2],b[0],b[4],b[5],finish);
@@ -2733,20 +2735,19 @@ function buildSecondFloor(data){
         }
         const [winLeft,winRight,winSill,winHead]=innerWindow;
         const beforeDivider="beforeDivider", divider="divider", windowSeat="livingEntrySeat";
+        const cabinetFront=sideEnd-.23, cabinetNorth=-.03, cabinetSouth=winRight;
         data.layers[beforeDivider]=[];
         data.layers[divider]=[];
         data.layers[windowSeat]=[];
         data.polygons[windowSeat]=[];
         data.interiorVariants.after.push(windowSeat);
         data.interiorVariants.names[windowSeat]="原矮牆、外廳矮櫃與軟坐墊";
-        for(const key of [beforeDivider,windowSeat]){
-            box(key,sideEnd,winLeft,0,dividerEnd,winRight,winSill,entryPaint);
-        }
+        box(beforeDivider,sideEnd,winLeft,0,dividerEnd,winRight,winSill,entryPaint);
+        box(windowSeat,sideEnd,cabinetNorth,0,dividerEnd,winRight,winSill,entryPaint);
         for(const key of [beforeDivider,divider]){
-            box(key,sideEnd,winLeft,winHead,dividerEnd,winRight,beamSill,entryPaint);
+            box(key,sideEnd,key===divider?cabinetNorth:winLeft,winHead,dividerEnd,winRight,beamSill,entryPaint);
             box(key,sideEnd,innerDoor[0],winHead,dividerEnd,innerDoor[1],beamSill,entryPaint);
         }
-        const cabinetFront=sideEnd-.23, cabinetNorth=winLeft, cabinetSouth=winRight;
         const panel=.020, cabinetTop=winSill-panel, shelfBase=.055;
         const cabinetWood=[199,171,140,2];
         // Four storage bays sit behind sliding doors on two tracks.
@@ -2793,6 +2794,12 @@ function buildSecondFloor(data){
         }
         data.layers.livingEntryBeam=[];
         box("livingEntryBeam",sideEnd,-.03,beamSill,dividerEnd+.09,4.835,entryCeiling,entryPaint);
+        data.renovationPaint.livingEntryBeam={[paintKeys(entryPaint)]:beamTile};
+        // Replace the individual strips with flush tile faces from the window heads up.
+        data.layers.entryTileBands=data.layers.entryTileBands.filter(b=>b[1]>-.03&&b[4]<4.835);
+        for(const [lo,hi] of [[-.03,-.027],[4.832,4.835]]){
+            box("entryTileBands",-.264,lo,beamSill,sideWallEnd,hi,3.60,beamTile);
+        }
 
         const fitHall=x=>westInside+(x-westInside)*(sideEnd-westInside)/(oldDivider-westInside);
         // Clear the full-length bench at the north cabinet while retaining the west wall fit.
@@ -3305,10 +3312,10 @@ void main(){
   }
   bool whiteBrickJoint=pat==34.;
   bool paintedPier=pat==52.;
-  if((pat==12.||pat==13.||pat==20.||whiteBrickJoint||paintedPier)&&abs(n.z)<.8){
+  if(paintedPier||((pat==12.||pat==13.||pat==20.||whiteBrickJoint)&&abs(n.z)<.8)){
     float u=abs(n.x)>.5?p.y:p.x;
     vec2 size=(pat==12.||whiteBrickJoint||paintedPier)?vec2(.074,.382):pat==20.?vec2(.158,.086):vec2(.278,.144);
-    float v=p.z/size.y;
+    float v=(abs(n.z)>.8?p.y:p.z)/size.y;
     float h=u/size.x+(pat==13.?mod(floor(v),2.)*.5:0.);
     vec2 coord=vec2(h,v);
     vec2 seam=min(fract(coord),1.-fract(coord));
@@ -4520,6 +4527,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=08c8fbd8e81b940f" defer></script>
+    <script src="./check-version.js?v=7009bad503c06e45" defer></script>
 </body>
 </html>

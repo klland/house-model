@@ -151,8 +151,20 @@ canvas.moving{cursor:move}
         display:grid;grid-template-columns:repeat(3,44px);gap:4px
     }
 }
+
+.drawer:has(#dimension-tools[open]){width:min(430px,100% - 24px)}
+.catalog-choices{display:flex;gap:6px}
+.catalog-choices button{flex:1}
+.catalog-floor h3{margin:9px 0 5px;font-size:13px}
+.catalog-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12px;line-height:1.4}
+.catalog-table :is(th,td){padding:7px 4px;border-bottom:1px solid var(--line)}
+.catalog-table thead th{color:var(--muted);font-weight:550}
+.catalog-table th:first-child{text-align:left}
+.catalog-table tbody th{font-weight:550}
+.catalog-table :is(th,td):not(:first-child){width:16%;text-align:right;white-space:nowrap}
+.catalog-note{display:block;color:var(--muted);font-weight:400;font-size:11px;line-height:1.45}
 </style>
-    <meta name="model-revision" content="59645709a940ddf5">
+    <meta name="model-revision" content="95a23326db511078">
 </head>
 <body>
 <header class="shell-header">
@@ -281,6 +293,24 @@ canvas.moving{cursor:move}
                         <p id="layout-status" role="status" hidden></p>
                     </div>
                 </details>
+                <details name="house-tools" id="dimension-tools">
+                    <summary>尺寸查詢</summary>
+                    <div class="tool-body">
+                        <div class="catalog-choices" role="group" aria-label="尺寸類別">
+                            <button type="button" id="show-room-sizes" aria-controls="room-sizes" aria-pressed="true">房間與空間</button>
+                            <button type="button" id="show-furniture-sizes" aria-controls="furniture-sizes" aria-pressed="false">家具與櫃體</button>
+                        </div>
+                        <div id="room-sizes">
+                            <p>尺寸以公尺表示。長為東西向，寬為南北向，高為地坪至天花板的模型淨高。</p>
+                            <div id="room-size-tables"></div>
+                        </div>
+                        <div id="furniture-sizes" hidden>
+                            <p>尺寸以公分表示。長、寬為家具原始擺放時的外接尺寸，長取水平較長邊。含現有與改造後配置。</p>
+                            <div id="furniture-size-tables"></div>
+                        </div>
+                        <p class="note">尺寸取自 3D 模型，為估算值。</p>
+                    </div>
+                </details>
                 <details name="house-tools">
                     <summary>模型資訊與匯出</summary>
                     <div class="tool-body">
@@ -364,6 +394,28 @@ canvas.moving{cursor:move}
 <script>"use strict";
 const data=JSON.parse(document.getElementById("model-data").textContent);
 const pillarAccessories=["livingEntryMirror","livingEntryPegboard"];
+const roomSizes=[], furnitureSizes=[];
+function recordRoom(floor,name,[x0,y0,x1,y1],height,note=""){
+    roomSizes.push({floor,name,length:x1-x0,width:y1-y0,height,note});
+}
+function footprintOf(box){
+    return [box[0],box[1],box[3],box[4]];
+}
+function recordFurniture(floor,room,name,box,note=""){
+    const x=box[3]-box[0], y=box[4]-box[1];
+    furnitureSizes.push({floor,name,length:Math.max(x,y),width:Math.min(x,y),height:box[5]-box[2],
+        note:[room,note].filter(Boolean).join(" · ")});
+}
+// Catalog individual pieces without splitting shared rendering layers.
+function furnitureParts(key,floor,room){
+    const boxes=data.layers[key], polygons=data.polygons[key]??[];
+    let boxStart=boxes.length, polygonStart=polygons.length;
+    return name=>{
+        if(name)recordFurniture(floor,room,name,geometryBounds(boxes.slice(boxStart),polygons.slice(polygonStart)));
+        boxStart=boxes.length;
+        polygonStart=polygons.length;
+    };
+}
 function buildSecondFloor(data){
     const floor=3.62, height=data.ceiling-.10, ceiling=floor+height, hallY=3.71, south=4.80;
     const split=11.69, studyWest=split-4.20, bathDoor=[14.38,15.18], bathEast=15.68;
@@ -1284,6 +1336,7 @@ function buildSecondFloor(data){
         const label="二樓書房旁房間", entryY=frontWall-wallDepth, farX=studyWest-wallDepth;
         const landingY=entryY-.77, raised=floor+.16;
         const floorKey="upperBedroomFloor", furnishings="upperBedroomFurniture";
+        const item=furnitureParts(furnishings,"二樓",label);
         const floorWood=[155,101,62,18], caseWood=[139,91,56,18], trimWood=[105,66,44,2];
         const curtain=[145,140,133,0];
 
@@ -1329,6 +1382,7 @@ function buildSecondFloor(data){
         box(furnishings,acX-.493,.213,acMount+.158,acX+.493,.225,acMount+.211,[96,94,86,0]);
         box(furnishings,acX-.486,.216,acMount+.174,acX+.486,.227,acMount+.188,[218,214,203,0]);
 
+        item();
         const desk=[end+.12,.055,farX-.60,.634], [deskWest,deskNorth,deskEast,deskFront]=desk;
         const deskTop=raised+.76;
         box(furnishings,deskWest,deskNorth,deskTop-.041,deskEast,deskFront,deskTop,caseWood);
@@ -1346,6 +1400,7 @@ function buildSecondFloor(data){
             box(furnishings,deskEast-.294,deskFront-.004,z+.066,deskEast-.23,deskFront+.017,z+.085,bronze);
         }
         walkObstacles.push(desk);
+        item("書桌");
 
         const displayLeft=deskWest+.05, displayRight=a-.21, displayBase=raised+1.13, displayTop=raised+2.41;
         box(furnishings,displayLeft,0,displayBase,displayRight,.037,displayTop,trimWood);
@@ -1358,6 +1413,7 @@ function buildSecondFloor(data){
         joinery("x",displayLeft,displayRight,.294,displayBase,displayTop,
             {panels:[[displayBase+.043,displayTop-.043,[116,130,126,10],true]]},false,furnishings);
 
+        item("玻璃展示櫃");
         const closetStart=.12, closetEnd=landingY-.15, closetFront=farX-.54;
         box(furnishings,closetFront+.047,closetStart,raised,farX,closetEnd,ceiling,trimWood);
         const closetBand=raised+2.34;
@@ -1371,6 +1427,7 @@ function buildSecondFloor(data){
             box(furnishings,closetFront-.012,closetStart,z,closetFront+.049,closetEnd,z+.032,trimWood);
         }
         walkObstacles.push([closetFront,closetStart,farX,closetEnd]);
+        item("到頂衣櫃");
 
         const topCabinetZ=ceiling-.80, topCabinetY=entryY-.24;
         for(let i=0;i<4;i++){
@@ -1380,6 +1437,7 @@ function buildSecondFloor(data){
         textile("upperCurtains",[end+.10,sideDoor[0]-.04],[topCabinetZ-.26,topCabinetZ+.025],
             topCabinetY-.018,"x",curtain,11);
 
+        item("上方吊櫃");
         const bed=[end+.036,entryY-1.51,end+2.01,entryY-.048], [head,near,foot,far]=bed;
         box(furnishings,head,near,raised,foot,far,raised+.064,trimWood);
         box(furnishings,head+.018,near+.022,raised+.061,foot-.018,far-.022,raised+.248,[182,178,172,0]);
@@ -1387,6 +1445,7 @@ function buildSecondFloor(data){
         box(furnishings,head+.055,near+.405,raised+.267,head+.374,far-.39,raised+.366,[83,85,86,0]);
         walkObstacles.push(bed);
 
+        item("床");
         const cx=5.66, cy=1.16, chairColor=[49,51,53,0];
         cyl(furnishings,cx,cy,raised+.065,raised+.43,.044,steel,12);
         for(let i=0;i<5;i++){
@@ -1403,6 +1462,8 @@ function buildSecondFloor(data){
         }
         walkObstacles.push([cx-.31,cy-.28,cx+.31,cy+.34]);
 
+        item("書桌椅");
+        recordRoom("二樓",label,[end,0,farX,entryY],ceiling-raised,"以架高木地板計淨高");
         addBedroomFan(5.30,1.88);
         return {label,origin:[sideDoor[0]-.20,landingY-.34],elevation:raised,
             labelPosition:[(end+farX)/2,1.89,raised+.05]};
@@ -1453,6 +1514,7 @@ function buildSecondFloor(data){
         const floorKey="upperWestBalconyFloor", porch="upperWestBalcony", cover="upperWestBalconyCeiling";
         const frontWallKey="upperWestFacade", windowsKey="upperWestGlazing";
         const furniture="upperWestFurniture";
+        const item=furnitureParts(furniture,"二樓",label);
         const wood=[152,102,63,18], darkWood=[113,68,43,2], cloth=[184,169,145,0];
         const tile=[223,220,208,43], darkTile=[150,74,59,43];
         data.renovationPaint[porch]={[paintKeys(darkTile)]:[81,84,86,43]};
@@ -1562,6 +1624,7 @@ function buildSecondFloor(data){
         box(furniture,mid-.48,south-.216,acMount+.257,mid+.48,south-.014,acMount+.553,[231,226,216,0]);
         box(furniture,mid-.446,south-.228,acMount+.274,mid+.446,south-.214,acMount+.311,graphite);
 
+        item();
         const bed=[1.23,.034,2.63,2.065], [bedWest,head,bedEast,foot]=bed;
         box(furniture,bedWest,head,floor,bedEast,foot,floor+.32,wood);
         box(furniture,bedWest-.017,head-.006,floor,bedEast+.017,head+.087,floor+.935,wood);
@@ -1574,6 +1637,7 @@ function buildSecondFloor(data){
             box(furniture,x,head+.465,floor+.539,x+.12,foot-.04,floor+.548,[197,191,181,0]);
         }
         walkObstacles.push(bed);
+        item("床");
         const wardrobe=[3.03,.18,roomEast,2.10], [cx,cy,ex,ey]=wardrobe, top=floor+2.30;
         box(furniture,cx+.031,cy,floor,ex,ey,top,darkWood);
         box(furniture,cx-.034,cy-.013,top,ex+.006,ey+.014,top+.046,wood);
@@ -1584,6 +1648,7 @@ function buildSecondFloor(data){
             box(furniture,cx-.034,right-.074,floor+.91,cx-.009,right-.05,floor+1.06,bronze);
         }
         walkObstacles.push(wardrobe);
+        item("衣櫃");
         const vanity=[2.99,2.35,roomEast,3.51], [vx,vy,ve,vs]=vanity;
         box(furniture,vx,vy,floor+.73,ve,vs,floor+.785,wood);
         box(furniture,vx+.018,vy,floor,ve,vy+.27,floor+.73,darkWood);
@@ -1595,6 +1660,7 @@ function buildSecondFloor(data){
         box(furniture,ve-.064,vy+.185,floor+.781,ve-.014,vs-.045,floor+1.89,darkWood);
         box(furniture,ve-.075,vy+.222,floor+.836,ve-.062,vs-.085,floor+1.826,[171,180,175,0]);
         walkObstacles.push(vanity);
+        item("梳妝台");
         const chest=[1.57,4.36,2.61,4.79], [chx,chy,endX,endY]=chest;
         box(furniture,chx,chy,floor,endX,endY,floor+.91,darkWood);
         box(furniture,chx-.016,chy-.024,floor+.91,endX+.016,endY,floor+.954,wood);
@@ -1604,6 +1670,8 @@ function buildSecondFloor(data){
             box(furniture,chx+.43,chy-.029,z+.069,chx+.61,chy-.014,z+.084,bronze);
         }
         walkObstacles.push(chest);
+        item("抽屜櫃");
+        recordRoom("二樓",label,[inner,0,roomEast,south],ceiling-floor);
         addBedroomFan(2.37,2.23);
         return {label,porchLabel,roomEast,porchWest,windowBounds,windowSashes:[closed,open],
             origin:[2.71,3.84],exterior:[frontWallKey,windowsKey,closed,open,floorKey,porch,cover],
@@ -1946,6 +2014,7 @@ function buildSecondFloor(data){
         for(const y of [heaterY+.07,heaterY+.21])cyl(utility,bathEast-.10,y,z+1.14,z+1.34,.015,steel);
         obstacles.push([heaterFront-.014,bathEntry+.012,bathEast,heaterY+.29]);
         const furniture="thirdRoomFurniture";
+        const item=furnitureParts(furniture,"三樓",bedroom);
         const furnish=(x0,y0,h0,x1,y1,h1,m)=>box(furniture,x0,y0,z+h0,x1,y1,z+h1,m);
         const bed=[roomWest+.043,1.12,roomWest+.992,3.25], [bx,by,bw,bd]=bed;
         for(const x of [bx,bw-.073])for(const y of [by,bd-.073]){
@@ -1967,6 +2036,7 @@ function buildSecondFloor(data){
         for(const h of [.32,.57,.82,1.07,1.32])furnish(bw+.01,2.60,h,bw+.066,2.965,h+.040,oak);
         obstacles.push([bx,by,bw+.065,bd]);
 
+        item("上下舖");
         for(const [s,e] of [[.24,1.78],[2.56,4.49]]){
             const x=eastWall-.282;
             furnish(x,s,.025,eastWall-.018,e,.615,oak);
@@ -1980,8 +2050,10 @@ function buildSecondFloor(data){
             }
             furnish(x-.002,s+.041,.637,x+.007,e-.041,2.168,[166,174,167,5]);
             obstacles.push([x,s,eastWall,e]);
+            item(s<1?"東牆書櫃・北":"東牆書櫃・南");
         }
         furnish(eastWall-.385,1.78,.042,eastWall-.012,2.56,.617,oak);
+        item("東牆矮櫃");
         const desk="thirdNorthDesk", deskWest=roomWest+.07, deskEast=eastWall-.282;
         const deskBack=.026, deskFront=.545, deskWood=[141,83,52,2];
         box(desk,deskWest,deskBack,z+.733,deskEast,deskFront,z+.776,deskWood);
@@ -1999,6 +2071,7 @@ function buildSecondFloor(data){
         obstacles.push([deskWest,deskBack,deskEast,deskFront]);
         furnish(roomWest+.002,1.27,1.96,roomWest+.196,3.34,2.39,lighterOak);
         for(let i=0;i<4;i++)furnish(roomWest+.19,1.284+i*.511,1.972,roomWest+.216,1.780+i*.511,2.386,oak);
+        item("床上方吊櫃");
         for(const x of [[roomWindow[0]-.045,roomWindow[0]+.28],[roomWindow[1]-.24,roomWindow[1]+.045]]){
             textile(furniture,x,[roomWindow[2]-.11,roomWindow[3]+.01],southWall-.072,"x",[135,125,151,0],5);
         }
@@ -2026,6 +2099,7 @@ function buildSecondFloor(data){
         trim("y",shrineDoor[1],southWall,shrineEast-.018,z,"thirdSkirting");
         box("thirdFloors",shrineWest+.12,.14,z,shrineEast-.11,southWall-.14,z+.004,aggregate);
 
+        const altarItem=furnitureParts("thirdShrine","三樓",shrine);
         const altarWood=[77,41,33,2], altarTrim=[125,65,43,2], altarGold=[193,145,63,0];
         const altarRed=[164,36,43,0];
         const altar=(a,b,c,d,e,f,m)=>box("thirdShrine",a,b,z+c,d,e,z+f,m);
@@ -2043,7 +2117,9 @@ function buildSecondFloor(data){
         const altarFront=shrineEast-.66, lampX=shrineEast-.45;
         shrineTable(altarFront,.96,shrineEast-.039,3.25,1.073,altarWood);
         altar(altarFront-.016,1.09,.926,altarFront+.013,3.12,.976,altarGold);
+        altarItem("神桌");
         shrineTable(shrineEast-1.63,1.34,shrineEast-.865,2.86,.843,[103,110,105,39]);
+        altarItem("供桌");
         const altarBack=shrineEast-.083;
         altar(altarBack,.99,1.078,shrineEast,3.22,2.33,altarWood);
         altar(altarBack-.015,1.06,2.13,altarBack,3.15,2.28,altarRed);
@@ -2062,13 +2138,16 @@ function buildSecondFloor(data){
             altar(altarBack-.015,y,1.135,altarBack,y+.21,2.105,altarRed);
             altar(altarBack-.023,y+.094,1.245,altarBack-.014,y+.106,1.98,altarGold);
         }
+        altarItem("神龕背板與飾板");
         for(const y of [1.42,2.79]){
             cyl("thirdShrine",lampX,y,z+1.071,z+1.138,.060,altarGold);
             cyl("thirdShrine",lampX,y,z+1.138,z+1.271,.020,altarGold);
             cyl("thirdShrine",lampX,y,z+1.263,z+1.366,.050,altarRed);
         }
         cyl("thirdShrine",lampX,2.10,z+1.072,z+1.17,.091,bronze);
+        altarItem();
         shrineTable(7.12,4.36,8.82,4.70,.738,[145,85,55,2]);
+        altarItem("南側長桌");
         for(const [x,y,r] of [[7.54,.93,.112],[7.64,1.64,.097],[7.64,2.94,.097],[7.54,3.63,.112]]){
             const lamp="thirdShrineLights", top=z+2.70, bottom=z+2.41;
             cyl(lamp,x,y,top,stairCeiling,.006,altarWood,8);
@@ -2233,6 +2312,10 @@ function buildSecondFloor(data){
             }
             obstacles.push([x-r,y-r,x+r,y+r]);
         }
+        recordRoom("三樓",shrine,[shrineWest,north,shrineEast,southWall],stairCeiling-z);
+        recordRoom("三樓",bedroom,rearRoomBounds,stairCeiling-z);
+        recordRoom("三樓",bathroom,[bathWest,north,bathEast,bathFront],bathTop-bathLevel);
+        recordRoom("三樓",hallway,[stairWest,stairEnd,roomWest,southWall],stairCeiling-z,"轉角取最大外接尺寸");
         return {
             floor:z,middle:stairTopZ,groups:thirdGroups,zones,obstacles,origin:[13.25,4.24],
             planBounds:[terraceWest,eastWall],
@@ -2250,6 +2333,12 @@ function buildSecondFloor(data){
             ]
         };
     }
+    recordRoom("二樓","二樓書房",[studyWest,0,split,south],height);
+    recordRoom("二樓","二樓房間",rearRoomBounds,height);
+    recordRoom("二樓","二樓浴室",[bath.west,0,bath.east,bathFront],bath.top-bathFloor);
+    recordRoom("二樓","二樓前側窄走道",[end,frontWall,start,south],frontHall.ceiling-floor);
+    recordRoom("二樓","二樓走廊",[split,bathEntry,corridorEnd,south],height,"轉角取最大外接尺寸");
+    recordRoom("二樓","二樓樓梯口",[split,stairEnd,lowerStairWall,hallY],height,"樓梯口平台");
     const third=buildThirdFloor();
     const firstFacadeWindows="firstFacadeWindows";
     data.layers[firstFacadeWindows]=[];
@@ -2615,6 +2704,7 @@ function buildSecondFloor(data){
         condenser(17.82,mainFace+.008,5.48);
         condenser(22.62,rearFace+.035,level+.12);
         obstacleBoxes.push([22.62,rearFace+.035,23.264,rearFace+.314]);
+        const patioChair=furnitureParts(details,"二樓","外陽台");
         for(const x of [13.91,14.43,14.95]){
             const y=mainFace+.155;
             for(const xx of [x,x+.365]){
@@ -2624,6 +2714,7 @@ function buildSecondFloor(data){
                 box(details,x+j*.066,y,level+.39,x+j*.066+.058,y+.376,level+.422,deckWood);
             }
             box(details,x,y,level+.69,x+.403,y+.038,level+.77,deckWood);
+            patioChair("木椅・"+(x===13.91?"西":x===14.43?"中":"東"));
             obstacleBoxes.push([x,y,x+.403,y+.376]);
         }
         for(const [x,y,r,h,pot] of [[19.41,8.07,.23,.31,planter],[20.10,8.05,.213,.29,[157,130,84,0]],
@@ -3278,14 +3369,17 @@ function orient(p,axis){
     if(axis==="y")return [p[0],-p[2],p[1]];
     return p;
 }
-const groups=Object.entries(data.layers).map(([key,boxes])=>{
-    const polygons=data.polygons?.[key]||[];
-    const footprint=polygons.map(([points,low,high,color,axis])=>{
+function geometryBounds(boxes,polygons){
+    const footprints=polygons.map(([points,low,high,,axis])=>{
         const vertices=axis==="surface"?points:
             points.flatMap(([x,y])=>[orient([x,y,low],axis),orient([x,y,high],axis)]);
         return bounds(vertices.map(p=>p.concat(p)));
     });
-    const b=bounds(boxes.concat(footprint)), info=data.objects[key], anchor=info?[(b[0]+b[3])/2,(b[1]+b[4])/2,0]:[0,0,0];
+    return bounds(boxes.concat(footprints));
+}
+const groups=Object.entries(data.layers).map(([key,boxes])=>{
+    const polygons=data.polygons?.[key]||[];
+    const b=geometryBounds(boxes,polygons), info=data.objects[key], anchor=info?[(b[0]+b[3])/2,(b[1]+b[4])/2,0]:[0,0,0];
     const coats=data.renovationPaint[key];
     let coated;
     if(coats){
@@ -3304,6 +3398,110 @@ const groups=Object.entries(data.layers).map(([key,boxes])=>{
     return {key,boxes,polygons,b,info,anchor,shift:[0,0],angle:0,coated};
 });
 const editable=groups.filter(g=>g.info);
+function populateSizeCatalog(){
+    const {measuredEntry:entry,outerHallWall}=data.designDimensions;
+    const layer=key=>data.layers[key];
+    const groundZone=name=>data.rearLayout.zones.find(zone=>zone.name===name).bounds;
+    const outerCeiling=layer("roof").find(b=>b[0]===outerHallWall.westInteriorX&&b[2]===entry.ceilingHeight);
+    const innerCeiling=layer("roof").find(b=>b[0]===entry.livingWallEnd&&b[1]===0);
+    const frontLeaf=layer("westShutterLeaf").find(b=>b[2]>=0&&b[5]-b[2]>1);
+    const hallShutters=layer("westRollers").filter(b=>b[0]>1&&b[5]-b[2]>2&&b[6]===66);
+    const northLeaf=hallShutters.find(b=>b[1]<0), southLeaf=hallShutters.find(b=>b[1]>4.8);
+    recordRoom("一樓","外廳（改造前）",[frontLeaf[3],northLeaf[4],entry.livingWallX,southLeaf[1]],
+        entry.ceilingHeight,"依鐵捲門內側取尺寸，柱間較窄");
+    recordRoom("一樓","外廳（改造後）",[outerHallWall.westInteriorX,outerCeiling[1],entry.livingWallX,outerCeiling[4]],
+        entry.ceilingHeight,"梁下 "+entry.beamHeight.toFixed(2)+" m");
+    recordRoom("一樓","客廳",[entry.livingWallEnd,innerCeiling[1],8,innerCeiling[4]],innerCeiling[2]);
+    const rearCeilings=layer("rearCeilings");
+    const reserve=layer("roomReserve")[0];
+    recordRoom("一樓","房間預留區",footprintOf(reserve),
+        rearCeilings.find(b=>b[0]===reserve[0])[2]-reserve[5]);
+    const hall=groundZone("後方走道"), kitchen=groundZone("廚房");
+    recordRoom("一樓","後方走道",hall,rearCeilings.find(b=>b[0]>8&&b[3]===kitchen[0]&&b[1]>3)[2]);
+    const bathFloor=layer("bathSurface")[0], bathCeiling=layer("bathCeiling")[0];
+    recordRoom("一樓","樓梯下浴室",footprintOf(bathFloor),bathCeiling[2]-bathFloor[5],"斜頂，列最高淨高");
+    recordRoom("一樓","廚房",kitchen,rearCeilings.find(b=>b[0]===kitchen[0]&&b[1]===0)[2],"主天花板");
+    recordRoom("一樓","折返樓梯間",[upstairs.stairWest,0,upstairs.stairEast,upstairs.stairEnd],"跨樓層");
+    const westBalcony=layer("upperWestBalconyFloor")[0];
+    recordRoom("二樓","西側拱廊陽台",footprintOf(westBalcony),
+        layer("upperWestBalconyCeiling")[0][2]-westBalcony[5],"有頂拱廊");
+    for(const [name,bounds] of rearBalcony.zones.map((box,i)=>[i?"後棟連接平台":"南側外陽台",box])){
+        recordRoom("二樓",name,bounds,"開放","部分有遮棚");
+    }
+    recordRoom("三樓","三樓大陽台",third.zones.find(zone=>zone.name==="三樓大陽台").bounds,"開放","局部有屋簷");
+    for(const [i,storey] of rearBalcony.storeys.entries()){
+        const floor=["一樓","二樓","三樓"][i];
+        recordRoom(floor,"後棟"+floor,footprintOf(layer(storey.floors)[0]),
+            storey.ceilingZ-storey.floorZ,"模型以單一空間呈現");
+    }
+
+    for(const {key,info:[name,room],b} of editable){
+        recordFurniture(room.startsWith("二樓")?"二樓":"一樓",room,name,b,
+            interiorVariants.after.includes(key)?"改造後":"");
+    }
+    for(const [floor,room,name,key,note] of [
+        ["一樓","外廳","北側到頂櫃","northCab","改造後"],
+        ["一樓","外廳","南側鞋櫃、掛衣區與穿鞋座","southCab","改造後・整組"],
+        ["一樓","外廳","柱面全身鏡","livingEntryMirror","改造後"],
+        ["一樓","客廳","電視櫃及兩側玻璃高櫃","tv","整組"],
+        ["一樓","客廳","柱面木質洞洞板","livingEntryPegboard","改造後"],
+        ["一樓","廚房","木色櫥櫃","kitchenWood","整組"],
+        ["一樓","廚房","紅色櫥櫃","kitchenRed","整組"],
+        ["三樓","三樓房間","北側長書桌","thirdNorthDesk",""]
+    ]){
+        recordFurniture(floor,room,name,groups.find(group=>group.key===key).b,note);
+    }
+    recordFurniture("一樓","外廳","窗下矮櫃與坐墊",
+        geometryBounds(layer("livingEntrySeat").slice(1),data.polygons.livingEntrySeat),"改造後");
+
+    for(const [kind,rows,unit,digits] of [["room",roomSizes,1,2],["furniture",furnitureSizes,100,1]]){
+        const tables=$(kind+"-size-tables");
+        for(const floor of ["一樓","二樓","三樓"]){
+            const section=document.createElement("section");
+            section.className="catalog-floor";
+            const title=document.createElement("h3");
+            title.textContent=floor;
+            const table=document.createElement("table");
+            table.className="catalog-table";
+            table.setAttribute("aria-label",floor+(kind==="room"?"空間尺寸（公尺）":"家具尺寸（公分）"));
+            const header=table.createTHead().insertRow();
+            for(const label of [kind==="room"?"空間":"家具","長","寬","高"]){
+                const th=document.createElement("th");
+                th.scope="col";
+                th.textContent=label;
+                header.append(th);
+            }
+            const body=table.createTBody();
+            for(const {name,length,width,height,note} of rows.filter(row=>row.floor===floor)){
+                const row=body.insertRow();
+                const th=document.createElement("th");
+                th.scope="row";
+                th.textContent=name;
+                if(note){
+                    const detail=document.createElement("span");
+                    detail.className="catalog-note";
+                    detail.textContent=note;
+                    th.append(detail);
+                }
+                row.append(th);
+                for(const value of [length,width,height]){
+                    row.insertCell().textContent=typeof value==="number"?(value*unit).toFixed(digits):value;
+                }
+            }
+            section.append(title,table);
+            tables.append(section);
+        }
+    }
+    function showFurnitureSizes(show){
+        $("room-sizes").hidden=show;
+        $("furniture-sizes").hidden=!show;
+        $("show-room-sizes").setAttribute("aria-pressed",String(!show));
+        $("show-furniture-sizes").setAttribute("aria-pressed",String(show));
+    }
+    $("show-room-sizes").onclick=()=>showFurnitureSizes(false);
+    $("show-furniture-sizes").onclick=()=>showFurnitureSizes(true);
+}
+populateSizeCatalog();
 const obstacles=groups.filter(g=>["northCab","southCab","tv"].includes(g.key));
 const walkWalls=[
     ...data.layers.east,
@@ -4736,6 +4934,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=59645709a940ddf5" defer></script>
+    <script src="./check-version.js?v=95a23326db511078" defer></script>
 </body>
 </html>

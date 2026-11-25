@@ -1,1 +1,1 @@
-window.houseModelRevision = "59645709a940ddf5";
+window.houseModelRevision = "95a23326db511078";

@@ -152,7 +152,7 @@ canvas.moving{cursor:move}
     }
 }
 </style>
-    <meta name="model-revision" content="0bed00afd64ab819">
+    <meta name="model-revision" content="8c6ad37e5a5744a3">
 </head>
 <body>
 <header class="shell-header">
@@ -2648,8 +2648,11 @@ function buildSecondFloor(data){
         };
     }
     const rearBalcony=buildRearBalcony();
-    // In the existing arcade these wall bays are occupied by shutters.
-    const shutterBays=[[.24,-.35,3.191,.12],[.24,4.67,3.191,5.12]];
+    // The shutters and the inner wall use the same measured boundary between the halls.
+    const measuredWestOutside=-.611, measuredSideStart=measuredWestOutside+.48, measuredSideOpening=2.50;
+    const measuredSideEnd=measuredSideStart+measuredSideOpening;
+    const sideShutterStart=.24, sideWallJoin=3.20;
+    const shutterBays=[[sideShutterStart,-.35,3.191,.12],[sideShutterStart,4.67,3.191,5.12]];
     function clearShutterBays(boxes){
         for(const bay of shutterBays)boxes=clearSlab(boxes,bay,-.22,3.28);
         return boxes;
@@ -2675,7 +2678,18 @@ function buildSecondFloor(data){
         for(const key of ["groundTrimActual","beforeOuterTiles","beforeOuterFacadeTiles",existing]){
             data.layers[key]=clearSlab(data.layers[key],trimZone,-.30,3.624);
         }
-        box(existing,pierWestX,lo,-.228,.24,hi,3.60,originalPier);
+        box(existing,pierWestX,lo,-.228,sideShutterStart,hi,3.60,originalPier);
+        // Replace the end of the old shutter bay with a painted return at the living-room wall.
+        const returnZone=[measuredSideEnd,lo-.04,sideWallJoin,hi+.04];
+        for(const key of [existing,"beforeOuterTiles","beforeSkirting"]){
+            data.layers[key]=clearSlab(data.layers[key],returnZone,-.30,3.60);
+        }
+        data.layers.beforeOuterFacadeTiles=clearSlab(data.layers.beforeOuterFacadeTiles,
+            [measuredSideEnd,lo-.04,sideWallJoin+.04,hi+.04],-.30,3.60);
+        box(existing,measuredSideEnd,north?-.23:4.80,-.22,
+            sideWallJoin,north?0:5.035,3.60,entryPaint);
+        box("beforeSkirting",measuredSideEnd,north?0:4.786,0,
+            sideWallJoin,north?.014:4.80,.115,[168,116,108,17]);
         const side=north?-.231:5.036;
         const y0=north?side:lo, y1=north?hi:side;
         for(const key of [wall,"outerWallFinish"]){
@@ -2706,11 +2720,13 @@ function buildSecondFloor(data){
     }
     shutter(mainRoller,"y",.269,4.531,-.264,.003,3.05);
     for(const [y,z,southSide] of [[-.15,-.214,false],[4.95,-.196,true]]){
-        const middle=1.78;
-        box(roller,.23,y-.065,2.98,3.20,y+.065,3.28,[79,125,143,0]);
-        for(const x of [.24,middle,3.156])box(roller,x,y-.042,z,x+.035,y+.042,3.0,[93,125,136,0]);
-        shutter(roller,"x",.267,middle,y,z+.008,3.03);
-        shutter(roller,"x",middle+.028,3.17,y,southSide?.63:z+.008,3.03);
+        const middle=(sideShutterStart+measuredSideEnd)/2, guideWidth=.035;
+        box(roller,sideShutterStart,y-.065,2.98,measuredSideEnd,y+.065,3.28,[79,125,143,0]);
+        for(const x of [sideShutterStart,middle,measuredSideEnd-guideWidth]){
+            box(roller,x,y-.042,z,x+guideWidth,y+.042,3.0,[93,125,136,0]);
+        }
+        shutter(roller,"x",sideShutterStart+.027,middle,y,z+.008,3.03);
+        shutter(roller,"x",middle+.028,measuredSideEnd-.014,y,southSide?.63:z+.008,3.03);
     }
 
     function refinish(key,change){
@@ -2742,10 +2758,10 @@ function buildSecondFloor(data){
     }
     function applyMeasuredEntry(){
         const entryCeiling=3.50, beamSill=3.17;
-        const westOutside=-.611, westInside=-.41, wallPlane=(westOutside+westInside)/2;
+        const westOutside=measuredWestOutside, westInside=-.41, wallPlane=(westOutside+westInside)/2;
         const northJamb=.32, southJamb=4.52, doorWidth=1.15, sideLightWidth=.40;
         const doorLeft=southJamb-doorWidth, sideLightLeft=doorLeft-sideLightWidth;
-        const doorHead=2.20, sideStart=westOutside+.48, sideEnd=sideStart+2.50;
+        const doorHead=2.20, sideStart=measuredSideStart, sideEnd=measuredSideEnd;
         const dividerEnd=sideEnd+.181;
         const glass=[190,210,204,5], gray=[62,64,64,0];
         const hallTile=[...entryPaint.slice(0,3),52];
@@ -2797,7 +2813,7 @@ function buildSecondFloor(data){
         box(beamKey,westOutside,-.08,beamSill,-.264,4.92,3.62,[221,220,213,0]);
 
         data.layers.firstFacadeWindows=data.layers.firstFacadeWindows.filter(b=>b[0]>=3.20);
-        const sideWallEnd=3.20;
+        const sideWallEnd=sideWallJoin;
         for(const [side,lo,hi,faceLo,faceHi,paint] of [
             ["north",-.231,-.03,-.234,-.231,northRenderFinish],
             ["south",4.835,5.036,5.036,5.037,lightFacadePaint]
@@ -3054,7 +3070,7 @@ function buildSecondFloor(data){
             westWindow:{sillAboveFinishedFloor:1.50,width:1.30,height:.40},
             westDoor:{width:doorWidth,height:doorHead,panelCount:1,fixedSideWidth:sideLightWidth,transomHeight:0},
             entryTileWidthAtDoor:doorWidth,
-            measuredEntry:{westWidth:4.20,sideOpening:2.50,ceilingHeight:entryCeiling,
+            measuredEntry:{westWidth:4.20,sideOpening:measuredSideOpening,ceilingHeight:entryCeiling,
                 beamHeight:beamSill,sideWindowSill:2.49,sideWindowHead:beamSill,
                 livingWallX:sideEnd,livingWallEnd:dividerEnd}
         });
@@ -4715,6 +4731,6 @@ restoreFurnitureLayout();
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=0bed00afd64ab819" defer></script>
+    <script src="./check-version.js?v=8c6ad37e5a5744a3" defer></script>
 </body>
 </html>

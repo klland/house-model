@@ -166,7 +166,7 @@ canvas.moving{cursor:move}
 .catalog-table :is(th,td):not(:first-child){width:16%;text-align:right;white-space:nowrap}
 .catalog-note{display:block;color:var(--muted);font-weight:400;font-size:11px;line-height:1.45}
 </style>
-    <meta name="model-revision" content="65b22aa2f111eb5a">
+    <meta name="model-revision" content="c26601cfdd09fc9f">
 </head>
 <body>
 <header class="shell-header">
@@ -2889,7 +2889,7 @@ function buildSecondFloor(data){
             axis,a,b,plane,sill,head,{panels:[[sill+.043,head-.043,glass,divided]]},true,key,gray);
 
         // The 420 cm opening is measured between the two front piers.
-        const horizontalWindowWidth=1.30, horizontalWindowSill=1.50;
+        const horizontalWindowWidth=1.30, horizontalWindowSill=1.40;
         const horizontalWindow=[northJamb,northJamb+horizontalWindowWidth,
             horizontalWindowSill,horizontalWindowSill+westGlazingShortSide];
         const frontOpenings=[horizontalWindow,[sideLightLeft,doorLeft,0,doorHead],
@@ -3089,6 +3089,8 @@ function buildSecondFloor(data){
         data.polygons[shoeCabinet]=data.polygons[shoeCabinet].filter(([points])=>
             points.every(([x])=>x<=shoeCabinetEast));
         const sideCabinetTop=2.40;
+        const originalNorthCountertop=.919, originalNorthLowerDoorTop=.887;
+        const northCountertopLift=1.00-originalNorthCountertop;
         for(const key of ["northCab","southCab"]){
             const fitCabinet=key==="northCab"
                 ?x=>westInside+(fitHall(x)-westInside)*northCabinetScale
@@ -3097,16 +3099,21 @@ function buildSecondFloor(data){
             const originalTop=Math.max(...data.layers[key].map(b=>b[5]));
             const topLift=sideCabinetTop-originalTop;
             // Shift the top panels together to preserve their thickness and the lower shelf positions.
-            const fitCabinetTop=z=>z>=originalTop-.12?z+topLift:z;
+            const fitCabinetHeight=z=>{
+                if(key==="northCab"&&z>=originalNorthLowerDoorTop&&z<=originalNorthCountertop){
+                    return z+northCountertopLift;
+                }
+                return z>=originalTop-.12?z+topLift:z;
+            };
             for(const b of data.layers[key]){
                 for(const i of [0,3])b[i]=fitCabinet(b[i]);
-                for(const i of [2,5])b[i]=fitCabinetTop(b[i]);
+                for(const i of [2,5])b[i]=fitCabinetHeight(b[i]);
             }
             data.polygons[key]=(data.polygons[key]??[]).map(([points,a,b,color,axis,pattern])=>{
-                if(axis==="x")return [points.map(([y,z])=>[y,fitCabinetTop(z)]),
+                if(axis==="x")return [points.map(([y,z])=>[y,fitCabinetHeight(z)]),
                     fitCabinet(a),fitCabinet(b),color,axis,pattern];
                 const outline=points.map(([x,...rest])=>[fitCabinet(x),...rest]);
-                if(axis==="z")return [outline,fitCabinetTop(a),fitCabinetTop(b),color,axis,pattern];
+                if(axis==="z")return [outline,fitCabinetHeight(a),fitCabinetHeight(b),color,axis,pattern];
                 return [outline,a,b,color,axis,pattern];
             });
         }
@@ -3450,6 +3457,7 @@ function populateSizeCatalog(){
     recordRoom("一樓","外廳（改造後）",[outerHallWall.westInteriorX,outerCeiling[1],entry.livingWallX,outerCeiling[4]],
         entry.ceilingHeight,"梁下 "+entry.beamHeight.toFixed(2)+" m，南北側窗高 "+
         entry.sideWindowHeight.toFixed(2)+" m，西面橫窗高 "+westWindow.height.toFixed(2)+
+        " m、窗框下緣離地 "+westWindow.sillAboveFinishedFloor.toFixed(2)+
         " m，門旁直窗寬 "+westDoor.fixedSideWidth.toFixed(2)+" m");
     recordRoom("一樓","客廳",[entry.livingWallEnd,innerCeiling[1],8,innerCeiling[4]],innerCeiling[2]);
     const rearCeilings=layer("rearCeilings");
@@ -4999,6 +5007,6 @@ applyFurnitureLayout(publishedLayout);
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=65b22aa2f111eb5a" defer></script>
+    <script src="./check-version.js?v=c26601cfdd09fc9f" defer></script>
 </body>
 </html>

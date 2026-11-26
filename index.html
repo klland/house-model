@@ -166,7 +166,7 @@ canvas.moving{cursor:move}
 .catalog-table :is(th,td):not(:first-child){width:16%;text-align:right;white-space:nowrap}
 .catalog-note{display:block;color:var(--muted);font-weight:400;font-size:11px;line-height:1.45}
 </style>
-    <meta name="model-revision" content="d59f14f9b83fcb99">
+    <meta name="model-revision" content="65b22aa2f111eb5a">
 </head>
 <body>
 <header class="shell-header">
@@ -3088,13 +3088,14 @@ function buildSecondFloor(data){
         data.layers[shoeCabinet]=data.layers[shoeCabinet].filter(b=>b[0]<=shoeCabinetEast);
         data.polygons[shoeCabinet]=data.polygons[shoeCabinet].filter(([points])=>
             points.every(([x])=>x<=shoeCabinetEast));
+        const sideCabinetTop=2.40;
         for(const key of ["northCab","southCab"]){
             const fitCabinet=key==="northCab"
                 ?x=>westInside+(fitHall(x)-westInside)*northCabinetScale
                 :x=>fitHall(x>=shoeCabinetWest&&x<=shoeCabinetEast
                     ?shoeCabinetWest+(x-shoeCabinetWest)*shoeCabinetScale:x);
             const originalTop=Math.max(...data.layers[key].map(b=>b[5]));
-            const topLift=sideWindowSill-originalTop;
+            const topLift=sideCabinetTop-originalTop;
             // Shift the top panels together to preserve their thickness and the lower shelf positions.
             const fitCabinetTop=z=>z>=originalTop-.12?z+topLift:z;
             for(const b of data.layers[key]){
@@ -3112,7 +3113,7 @@ function buildSecondFloor(data){
         // Round the corner back toward the cabinet, keeping the end of the tile aligned with it.
         const tileEdge=fitHall(extendedShoeCabinetEast), tileRadius=1.15;
         // The open coat bay shares the shoe cabinet's height and meets it at the bench.
-        const bayWest=tileEdge, bayEast=fitHall(3.055), bayTop=sideWindowSill;
+        const bayWest=tileEdge, bayEast=fitHall(3.055), bayTop=sideCabinetTop;
         const bayFront=4.436, bayBack=4.835;
         const benchFront=4.404, benchTop=.455, cushionHeight=.045;
         const cabinetBottom=.1824;
@@ -3479,8 +3480,8 @@ function populateSizeCatalog(){
             interiorVariants.after.includes(key)?"改造後":"");
     }
     for(const [floor,room,name,key,note] of [
-        ["一樓","外廳","北側窗下置物櫃","northCab","櫃頂齊窗台"],
-        ["一樓","外廳","南側鞋櫃、掛衣區與穿鞋座","southCab","整組，櫃頂齊窗台"],
+        ["一樓","外廳","北側窗下置物櫃","northCab","櫃頂上方留空"],
+        ["一樓","外廳","南側鞋櫃、掛衣區與穿鞋座","southCab","整組，櫃頂上方留空"],
         ["一樓","外廳","柱面全身鏡","livingEntryMirror","改造後"],
         ["一樓","客廳","電視櫃及兩側玻璃高櫃","tv","整組"],
         ["一樓","客廳","柱面木質洞洞板","livingEntryPegboard","改造後"],
@@ -4998,6 +4999,6 @@ applyFurnitureLayout(publishedLayout);
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=d59f14f9b83fcb99" defer></script>
+    <script src="./check-version.js?v=65b22aa2f111eb5a" defer></script>
 </body>
 </html>

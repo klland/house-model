@@ -166,7 +166,7 @@ canvas.moving{cursor:move}
 .catalog-table :is(th,td):not(:first-child){width:16%;text-align:right;white-space:nowrap}
 .catalog-note{display:block;color:var(--muted);font-weight:400;font-size:11px;line-height:1.45}
 </style>
-    <meta name="model-revision" content="c26601cfdd09fc9f">
+    <meta name="model-revision" content="97dc2e82823d527f">
 </head>
 <body>
 <header class="shell-header">
@@ -2890,14 +2890,14 @@ function buildSecondFloor(data){
 
         // The 420 cm opening is measured between the two front piers.
         const horizontalWindowWidth=1.30, horizontalWindowSill=1.40;
-        const horizontalWindow=[northJamb,northJamb+horizontalWindowWidth,
+        const horizontalWindowStart=northJamb+(sideLightLeft-northJamb-horizontalWindowWidth)/2;
+        const horizontalWindow=[horizontalWindowStart,horizontalWindowStart+horizontalWindowWidth,
             horizontalWindowSill,horizontalWindowSill+westGlazingShortSide];
         const frontOpenings=[horizontalWindow,[sideLightLeft,doorLeft,0,doorHead],
             [doorLeft,southJamb,0,doorHead]];
         data.layers.west=[];
         wallAt("y",northJamb,southJamb,westOutside,westInside,0,beamSill,
             frontOpenings,"west",entryPaint);
-        // A slim inside reveal meets the jamb where the horizontal window starts at the north pier.
         fixedWindow("west","y",horizontalWindow[0],horizontalWindow[1],wallPlane,
             horizontalWindow[2],horizontalWindow[3]);
         fixedWindow("west","y",sideLightLeft,doorLeft,wallPlane,0,doorHead);
@@ -5007,6 +5007,6 @@ applyFurnitureLayout(publishedLayout);
 if(document.body.dataset.startView==="walk")enterWalk();
 else setView("exterior");
 </script>
-    <script src="./check-version.js?v=c26601cfdd09fc9f" defer></script>
+    <script src="./check-version.js?v=97dc2e82823d527f" defer></script>
 </body>
 </html>
